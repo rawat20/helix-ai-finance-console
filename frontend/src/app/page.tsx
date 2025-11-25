@@ -338,10 +338,6 @@ export default function Home() {
                     ? "Cache snapshot"
                     : "Connecting…"}
             </div>
-            <button onClick={handleExport}
-                  className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-200">
-                  Export report
-            </button>
 
           </div>
         </nav>
