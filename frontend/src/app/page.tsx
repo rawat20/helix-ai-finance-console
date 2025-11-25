@@ -194,6 +194,11 @@ export default function Home() {
 
   const displayData = data || fallbackData;
 
+  // --- NEW: determine whether API is effectively unavailable
+  // Show banner only when neither primary nor fallback provided data
+  const apiUnavailable = (!data && !fallbackData) || (error && !fallbackData);
+  // --- END NEW
+
   // --- NORMALIZE payload: guarantee nested fields exist to avoid runtime `undefined` reads ---
   const payload = {
     summary: {
@@ -342,7 +347,7 @@ export default function Home() {
           </div>
         </nav>
 
-        {error ? (
+        {apiUnavailable ? (
           <p className="mt-4 rounded-2xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
             Unable to reach the API gateway. Showing cached data.
           </p>
@@ -582,3 +587,5 @@ export default function Home() {
     </div>
   );
 }
+
+
