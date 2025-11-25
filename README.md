@@ -1,4 +1,4 @@
-# Full-Stack Analytics Demo
+# Full-Stack Analytics Demo - live (https://helix-ai-finance-console-k46fbwnv8-adityas-projects-f913f7c9.vercel.app/)
 
 # 🧠 Helix AI Finance Console  
 **AI-powered Expense Analytics, Categorization & Anomaly Detection**
