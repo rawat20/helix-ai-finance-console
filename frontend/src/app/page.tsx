@@ -270,6 +270,45 @@ export default function Home() {
     }
   };
 
+  const handleExport = async () => {
+    try {
+      const url = `${API_BASE_URL}/api/export`;
+  
+      const resp = await fetch(url, {
+        method: "GET",
+        headers: { Accept: "text/csv" },
+      });
+  
+      if (!resp.ok) {
+        const text = await resp.text();
+        console.error("Export error response:", text);
+        alert("Export failed. Check console.");
+        return;
+      }
+  
+      const blob = await resp.blob();
+      const filename =
+        resp.headers
+          .get("content-disposition")
+          ?.split("filename=")[1]
+          ?.replace(/"/g, "") || "helix_expense_report.csv";
+  
+      const blobUrl = window.URL.createObjectURL(blob);
+  
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+  
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.error("Export failed:", err);
+      alert("Export failed — see console");
+    }
+  };
+  
   return (
     <div className="min-h-screen bg-slate-950 text-white">
       <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
@@ -299,9 +338,11 @@ export default function Home() {
                     ? "Cache snapshot"
                     : "Connecting…"}
             </div>
-            <button className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-200">
-              Export report
+            <button onClick={handleExport}
+                  className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-200">
+                  Export report
             </button>
+
           </div>
         </nav>
 

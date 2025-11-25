@@ -6,7 +6,8 @@ import cors from "cors";
 import axios from "axios";
 import routes from "./routes/index.js";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
-
+import fs from "fs";
+import path from "path";
 const app = express();
 const PORT = process.env.PORT || 4000;
 const PY_SERVICE_URL =
@@ -17,6 +18,13 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+app.get("/", (req, res) => {
+  res.json({
+    success: true,
+    message: "Express API is running",
+    timestamp: Date.now(),
+  });
+});
 // Legacy routes (kept for backward compatibility)
 const fallbackExpenses = {
   summary: {
@@ -169,7 +177,60 @@ app.get("/api/expenses", async (_req, res) => {
   }
 });
 
+// ---------- CSV Export Route ----------
+app.get("/api/export", async (req, res) => {
+  try {
+    // Try to load transactions from DB if available
+    try {
+      const { getTransactions } = await import("./services/transactionService.js");
+      const transactions = await getTransactions({ limit: 1000 }); // adjust as needed
+
+      if (transactions && transactions.length > 0) {
+        // Build CSV header
+        const header = ["id", "date", "merchant", "category", "amount", "anomaly", "confidence", "note"];
+        const lines = transactions.map((t) => {
+          const date = t.date ? (new Date(t.date)).toISOString().split("T")[0] : "";
+          const merchant = (t.merchant || "").replace(/"/g, '""');
+          const category = (t.category || t.aiCategory || "").replace(/"/g, '""');
+          const amount = Number(t.amount || 0).toFixed(2);
+          const anomaly = t.anomalyFlag ? "true" : "false";
+          const confidence = (t.aiConfidence || 0.85);
+          const note = (t.reason || "").replace(/"/g, '""');
+          // CSV escaping: wrap fields with quotes
+          return `"${t.id}","${date}","${merchant}","${category}","${amount}","${anomaly}","${confidence}","${note}"`;
+        });
+
+        const csv = `${header.join(",")}\n${lines.join("\n")}`;
+        res.setHeader("Content-Type", "text/csv");
+        res.setHeader("Content-Disposition", "attachment; filename=helix_expense_report.csv");
+        return res.send(csv);
+      }
+    } catch (dbErr) {
+      console.warn("Export: DB read failed (falling back to sample file):", dbErr.message);
+    }
+
+    // Fallback: send the included sample CSV file (local dev/demo file).
+    // NOTE: this file path is the sample you generated earlier.
+    const SAMPLE_CSV_PATH = "/mnt/data/sample_expenses_with_anomalies.csv";
+
+    if (fs.existsSync(SAMPLE_CSV_PATH)) {
+      // Stream the file back
+      res.setHeader("Content-Type", "text/csv");
+      res.setHeader("Content-Disposition", "attachment; filename=sample_expenses_with_anomalies.csv");
+      const readStream = fs.createReadStream(SAMPLE_CSV_PATH);
+      return readStream.pipe(res);
+    }
+
+    // If neither DB nor sample file available
+    return res.status(404).json({ success: false, error: "No exportable data available" });
+  } catch (err) {
+    console.error("Error generating export:", err);
+    return res.status(500).json({ success: false, error: "Export failed" });
+  }
+});
+
 // New modular routes
+
 app.use("/api", routes);
 
 // Error handling middleware (must be last)
