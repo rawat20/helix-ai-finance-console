@@ -1,0 +1,26 @@
+Date,Amount,Description,Merchant,Category
+2024-12-10,52.40,Grocery run,Whole Foods,Groceries
+2024-12-10,14.99,Music streaming subscription,Spotify,Entertainment
+2024-12-09,289.00,Monthly phone bill,Verizon,Utilities
+2024-12-09,120.75,Dinner with friends,Sakura Bistro,Meals
+2024-12-08,2100.00,Office rent,WeWork,Workspace
+2024-12-08,75.15,Taxi to airport,Uber,Transportation
+2024-12-07,340.60,Cloud compute instance,AWS,Software
+2024-12-07,29.99,Notebook and pens,Office Depot,Office Supplies
+2024-12-06,980.00,Flight to San Diego,BlueBird Air,Travel
+2024-12-06,12.49,Face wash and shampoo,CVS,Personal Care
+2024-12-05,450.00,Freelancer payment,Upwork,Business Services
+2024-12-05,65.30,Gym supplements,Pulse Fitness,Wellness
+2024-12-04,482.23,Grocery shopping,Midtown Grocer,Groceries
+2024-12-03,1289.56,Flight booking,BlueBird Air,Travel
+2024-12-02,6421.87,Cloud service subscription,Nimbus Cloud AI,Software
+2024-12-01,45.50,Coffee and lunch,Golden Bean Cafe,Meals
+2024-11-30,320.00,Monthly workspace,Urban Cowork,Workspace
+2024-11-29,89.99,Gym membership,Pulse Fitness,Wellness
+2024-11-28,35.89,Household cleaning supplies,Target,Groceries
+2024-11-27,119.00,Online course subscription,Coursera,Education
+2024-11-27,8.49,Snacks and water,7-Eleven,Groceries
+2024-11-26,250.00,Team dinner,Olive Garden,Meals
+2024-11-26,199.99,Wireless headphones,Sony Electronics,Electronics
+2024-11-25,305.00,Conference ticket,Global Tech Summit,Professional Development
+2024-11-25,64.20,Taxi back home,Lyft,Transportation
