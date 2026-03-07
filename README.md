@@ -2,6 +2,17 @@
 
 An AI-powered expense management console that parses bank statements, categorizes transactions, detects anomalies, and generates insights — all backed by a real database.
 
+## Screenshots
+
+### Dashboard Overview
+![Dashboard Overview](assets/dashboard.png)
+
+### CSV Upload & Processing
+![CSV Upload](assets/upload.png)
+
+### Transaction Table with Anomaly Detection
+![Transactions](assets/transactions.png)
+
 ## Tech Stack
 
 | Layer | Technology |

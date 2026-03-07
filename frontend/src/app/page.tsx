@@ -136,6 +136,61 @@ function FileUploadCard({
   );
 }
 
+function SkeletonCard() {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-lg shadow-slate-950/20 animate-pulse">
+      <div className="h-3 w-24 rounded bg-white/10 mb-4" />
+      <div className="h-8 w-32 rounded bg-white/10 mb-2" />
+      <div className="h-2 w-20 rounded bg-white/10" />
+    </div>
+  );
+}
+
+function SkeletonTable() {
+  return (
+    <div className="animate-pulse space-y-3 mt-4">
+      {[...Array(5)].map((_, i) => (
+        <div key={i} className="flex gap-4 border-t border-white/10 pt-3">
+          <div className="h-3 w-28 rounded bg-white/10" />
+          <div className="h-3 w-20 rounded bg-white/10" />
+          <div className="h-3 w-16 rounded bg-white/10" />
+          <div className="h-3 w-20 rounded bg-white/10" />
+          <div className="h-3 w-14 rounded bg-white/10" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function SkeletonChart() {
+  return (
+    <div className="animate-pulse mt-6 h-64 rounded-2xl bg-white/5 flex items-end gap-2 px-4 pb-4">
+      {[40, 65, 50, 80, 55, 90, 70].map((h, i) => (
+        <div
+          key={i}
+          className="flex-1 rounded-t bg-white/10"
+          style={{ height: `${h}%` }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function UploadProgressOverlay({ fileName }: { fileName: string | null }) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-3 h-full">
+      <div className="relative h-10 w-10">
+        <svg className="animate-spin h-10 w-10 text-indigo-400" viewBox="0 0 24 24" fill="none">
+          <circle className="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+          <path className="opacity-80" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+        </svg>
+      </div>
+      <p className="text-sm font-semibold text-indigo-200">Processing {fileName}…</p>
+      <p className="text-xs text-slate-400">Parsing · Detecting anomalies · Saving to database</p>
+    </div>
+  );
+}
+
 function AnomalyBadge({ anomaly }: { anomaly: boolean }) {
   if (!anomaly) {
     return (
@@ -366,30 +421,48 @@ export default function Home() {
         ) : null}
 
         <section className="mt-6 grid gap-4 md:grid-cols-3">
-          <StatCard
-            label="Total spend (90d)"
-            value={formatCurrency(payload?.summary?.totalSpend ?? 0, true)}
-            helper={payload.source === "python-service" ? "Synced live" : "Using cache"}
-          />
-          <StatCard
-            label="Flagged transactions"
-            value={(payload?.summary?.flaggedCount ?? 0).toString()}
-            helper={`${flaggedRate} of recent transactions`}
-          />
-          <StatCard
-            label="Average ticket size"
-            value={formatCurrency(Number(payload?.summary?.avgTicket ?? 0))}
-            helper="AI confidence ≥ 78%"
-          />
+          {isLoading ? (
+            <>
+              <SkeletonCard />
+              <SkeletonCard />
+              <SkeletonCard />
+            </>
+          ) : (
+            <>
+              <StatCard
+                label="Total spend (90d)"
+                value={formatCurrency(payload?.summary?.totalSpend ?? 0, true)}
+                helper={payload.source === "python-service" ? "Synced live" : "Using cache"}
+              />
+              <StatCard
+                label="Flagged transactions"
+                value={(payload?.summary?.flaggedCount ?? 0).toString()}
+                helper={`${flaggedRate} of recent transactions`}
+              />
+              <StatCard
+                label="Average ticket size"
+                value={formatCurrency(Number(payload?.summary?.avgTicket ?? 0))}
+                helper="AI confidence ≥ 78%"
+              />
+            </>
+          )}
         </section>
 
         <section className="mt-6 grid gap-6 lg:grid-cols-3">
-          <FileUploadCard
-            onUpload={handleUpload}
-            uploading={uploading}
-            fileName={fileName}
-            parsing={parsing}
-          />
+          <div className="rounded-3xl border border-white/10 bg-white/5 overflow-hidden">
+            {uploading ? (
+              <div className="h-48 flex items-center justify-center p-6">
+                <UploadProgressOverlay fileName={fileName} />
+              </div>
+            ) : (
+              <FileUploadCard
+                onUpload={handleUpload}
+                uploading={uploading}
+                fileName={fileName}
+                parsing={parsing}
+              />
+            )}
+          </div>
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6 lg:col-span-2">
             <div className="flex items-center justify-between">
               <div>
@@ -402,39 +475,43 @@ export default function Home() {
                 {isLoading ? "Refreshing…" : "Auto-refresh · 60s"}
               </p>
             </div>
-            <div className="mt-6 h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={payload.monthlySpending}>
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    stroke="rgba(255,255,255,0.12)"
-                    vertical={false}
-                  />
-                  <XAxis
-                    dataKey="label"
-                    tick={{ fill: "#cbd5f5", fontSize: 12 }}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "#0f172a",
-                      borderRadius: 12,
-                      border: "1px solid rgba(255,255,255,0.1)",
-                    }}
-                    formatter={(value: number) => formatCurrency(value)}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="value"
-                    stroke="#22d3ee"
-                    strokeWidth={3}
-                    dot={{ r: 4, strokeWidth: 2, stroke: "#0f172a" }}
-                    activeDot={{ r: 6 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
+            {isLoading ? (
+              <SkeletonChart />
+            ) : (
+              <div className="mt-6 h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={payload.monthlySpending}>
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke="rgba(255,255,255,0.12)"
+                      vertical={false}
+                    />
+                    <XAxis
+                      dataKey="label"
+                      tick={{ fill: "#cbd5f5", fontSize: 12 }}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "#0f172a",
+                        borderRadius: 12,
+                        border: "1px solid rgba(255,255,255,0.1)",
+                      }}
+                      formatter={(value: number) => formatCurrency(value)}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="value"
+                      stroke="#22d3ee"
+                      strokeWidth={3}
+                      dot={{ r: 4, strokeWidth: 2, stroke: "#0f172a" }}
+                      activeDot={{ r: 6 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
           </div>
         </section>
 
@@ -516,6 +593,9 @@ export default function Home() {
               </button>
             </div>
             <div className="mt-4 overflow-x-auto">
+              {isLoading ? (
+                <SkeletonTable />
+              ) : (
               <table className="min-w-full text-left text-sm">
                 <thead>
                   <tr className="text-slate-300">
@@ -580,6 +660,7 @@ export default function Home() {
                   ) : null}
                 </tbody>
               </table>
+              )}
             </div>
           </div>
         </section>
