@@ -1,6 +1,11 @@
 import { parseCSV } from "../services/csvParser.js";
 import { createTransactionsBulk } from "../services/transactionService.js";
-import { detectAnomalies } from "../services/geminiService.js";
+import { detectAnomalies, categorizeBatch } from "../services/geminiService.js";
+
+const VALID_CATEGORIES = [
+  "Travel", "Meals", "Software", "Office",
+  "Utilities", "R&D", "Operations", "Wellness", "Other",
+];
 
 /**
  * POST /upload
@@ -36,6 +41,25 @@ export const uploadFile = async (req, res, next) => {
             error: csvError.message,
           });
         }
+      }
+    }
+
+    // Run Gemini batch categorization
+    if (allTransactions.length > 0) {
+      try {
+        const categories = await categorizeBatch(allTransactions);
+        let hallucinations = 0;
+        categories.forEach(({ index, category, confidence }) => {
+          if (allTransactions[index]) {
+            const isValid = VALID_CATEGORIES.includes(category);
+            if (!isValid) hallucinations++;
+            allTransactions[index].aiCategory = isValid ? category : "Other";
+            allTransactions[index].aiConfidence = confidence;
+          }
+        });
+        console.log(`Categorized ${categories.length} transactions via Gemini (${hallucinations} hallucinated categories corrected to "Other")`);
+      } catch (aiError) {
+        console.warn("Gemini batch categorization failed, skipping:", aiError.message);
       }
     }
 

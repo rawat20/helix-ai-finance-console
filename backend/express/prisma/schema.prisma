@@ -19,6 +19,7 @@ model Transaction {
   merchant    String
   category    String?
   aiCategory  String?
+  confidence  Float?
   anomalyFlag Boolean  @default(false)
   reason      String?
   createdAt   DateTime @default(now())

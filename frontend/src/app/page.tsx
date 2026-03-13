@@ -3,7 +3,6 @@
 import { ChangeEvent, useMemo, useState } from "react";
 import useSWR from "swr";
 import axios from "axios";
-import { useCSVParser } from "@/utils/useCSVParser";
 import {
   Line,
   LineChart,
@@ -51,11 +50,24 @@ type ExpenseResponse = {
   source?: string;
 };
 
+type InsightItem = {
+  type: string;
+  title: string;
+  description: string;
+  severity: "info" | "warning";
+};
+
+type InsightsData = {
+  insights: InsightItem[];
+  recommendations: string[];
+  trends: { metric: string; change: string; period: string }[];
+};
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000";
 
-  const fetcher = (url: string) =>
-    axios.get(url).then((res) => res.data?.data ?? res.data);
+const fetcher = (url: string) =>
+  axios.get(url).then((res) => res.data?.data ?? res.data);
 
 const PIE_COLORS = ["#6366F1", "#F97316", "#34D399", "#F43F5E", "#22D3EE", "#FBBF24"];
 
@@ -90,12 +102,10 @@ function FileUploadCard({
   onUpload,
   uploading,
   fileName,
-  parsing,
 }: {
   onUpload: (file: File) => void;
   uploading: boolean;
   fileName: string | null;
-  parsing?: boolean;
 }) {
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -107,7 +117,7 @@ function FileUploadCard({
   return (
     <label
       htmlFor="expense-upload"
-      className="flex h-48 cursor-pointer flex-col items-center justify-center rounded-3xl border-2 border-dashed border-white/20 bg-white/5 p-6 text-center transition hover:border-indigo-400/80 hover:bg-white/10"
+      className="flex h-full min-h-48 cursor-pointer flex-col items-center justify-center rounded-3xl border-2 border-dashed border-white/20 bg-white/5 p-6 text-center transition hover:border-indigo-400/80 hover:bg-white/10"
     >
       <input
         id="expense-upload"
@@ -126,11 +136,9 @@ function FileUploadCard({
       <p className="mt-4 text-sm text-indigo-200">
         {uploading
           ? "Uploading and processing…"
-          : parsing
-            ? "Parsing CSV file…"
-            : fileName
-              ? `Ready: ${fileName}`
-              : "Click or drag files to start"}
+          : fileName
+            ? `Ready: ${fileName}`
+            : "Click or drag files to start"}
       </p>
     </label>
   );
@@ -176,6 +184,20 @@ function SkeletonChart() {
   );
 }
 
+function SkeletonInsights() {
+  return (
+    <div className="animate-pulse space-y-3 mt-4">
+      {[...Array(3)].map((_, i) => (
+        <div key={i} className="rounded-2xl border border-white/10 bg-white/5 p-4">
+          <div className="h-3 w-32 rounded bg-white/10 mb-3" />
+          <div className="h-2 w-full rounded bg-white/10 mb-2" />
+          <div className="h-2 w-3/4 rounded bg-white/10" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function UploadProgressOverlay({ fileName }: { fileName: string | null }) {
   return (
     <div className="flex flex-col items-center justify-center gap-3 h-full">
@@ -187,6 +209,121 @@ function UploadProgressOverlay({ fileName }: { fileName: string | null }) {
       </div>
       <p className="text-sm font-semibold text-indigo-200">Processing {fileName}…</p>
       <p className="text-xs text-slate-400">Parsing · Detecting anomalies · Saving to database</p>
+    </div>
+  );
+}
+
+function InsightsModal({
+  open,
+  onClose,
+  insightsLoading,
+  insights,
+  recommendations,
+  trends,
+}: {
+  open: boolean;
+  onClose: () => void;
+  insightsLoading: boolean;
+  insights: InsightItem[];
+  recommendations: string[];
+  trends: { metric: string; change: string; period: string }[];
+}) {
+  if (!open) return null;
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4"
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-3xl max-h-[85vh] overflow-y-auto rounded-3xl border border-white/10 bg-slate-900 p-6 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-start justify-between mb-5">
+          <div>
+            <p className="text-xs uppercase tracking-[0.3em] text-slateate-400 text-slate-400">Gemini AI</p>
+            <p className="text-2xl font-semibold text-white">Insights & Recommendations</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="ml-4 shrink-0 rounded-full border border-white/10 p-1.5 text-slate-400 hover:border-white/30 hover:text-white transition"
+            aria-label="Close"
+          >
+            <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none">
+              <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Trend pills */}
+        {trends.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-5">
+            {trends.map((t) => (
+              <span
+                key={t.metric}
+                className={`rounded-full border px-3 py-1 text-xs font-semibold ${
+                  t.change.startsWith("+")
+                    ? "border-rose-500/30 bg-rose-500/10 text-rose-300"
+                    : t.change.startsWith("-")
+                      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+                      : "border-white/10 bg-white/5 text-slate-300"
+                }`}
+              >
+                {t.metric} · {t.change}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Insight cards */}
+        {insightsLoading ? (
+          <SkeletonInsights />
+        ) : insights.length === 0 && recommendations.length === 0 ? (
+          <p className="text-sm text-slate-500 py-8 text-center">
+            Upload transactions to generate AI-powered insights.
+          </p>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2">
+            {insights.map((item, i) => (
+              <div
+                key={i}
+                className={`rounded-2xl border p-4 ${
+                  item.severity === "warning"
+                    ? "border-rose-500/30 bg-rose-500/5"
+                    : "border-indigo-500/30 bg-indigo-500/5"
+                }`}
+              >
+                <div className="flex items-start gap-2">
+                  <span
+                    className={`mt-0.5 h-2 w-2 shrink-0 rounded-full ${
+                      item.severity === "warning" ? "bg-rose-400" : "bg-indigo-400"
+                    }`}
+                  />
+                  <div>
+                    <p className="text-sm font-semibold text-white">{item.title}</p>
+                    <p className="mt-1 text-xs text-slate-400">{item.description}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Recommendations */}
+        {recommendations.length > 0 && (
+          <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4">
+            <p className="text-xs uppercase tracking-wide text-slate-400 mb-2">Recommendations</p>
+            <ul className="space-y-1">
+              {recommendations.map((rec, i) => (
+                <li key={i} className="flex items-start gap-2 text-sm text-slate-300">
+                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-indigo-400" />
+                  {rec}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -212,25 +349,14 @@ export default function Home() {
   const [uploading, setUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [parsedTransactions, setParsedTransactions] = useState<
-    Array<{
-      date: string;
-      amount: number;
-      description: string;
-      merchant: string;
-      category: string | null;
-    }>
-  >([]);
-  const { parseFile, loading: parsing, error: parseError } = useCSVParser();
+  const [insightsOpen, setInsightsOpen] = useState(false);
 
-  // Try to fetch from database first, fallback to expenses endpoint
   const { data, error, isLoading, mutate } = useSWR(
     `${API_BASE_URL}/api/transactions`,
     fetcher,
     {
-      refreshInterval: 60_000,
+      revalidateOnFocus: false,
       onErrorRetry: (error, key, config, revalidate, { retryCount }) => {
-        // If transactions endpoint fails, try expenses endpoint
         if (retryCount < 2 && error.response?.status === 404) {
           return;
         }
@@ -238,23 +364,21 @@ export default function Home() {
     }
   );
 
-  // Fallback to expenses endpoint if transactions not available
   const { data: fallbackData } = useSWR(
     data ? null : `${API_BASE_URL}/api/expenses`,
     fetcher,
-    {
-      refreshInterval: 60_000,
-    }
+    { revalidateOnFocus: false }
+  );
+
+  const { data: insightsData, isLoading: insightsLoading } = useSWR<InsightsData>(
+    insightsOpen ? `${API_BASE_URL}/api/insights` : null,
+    fetcher
   );
 
   const displayData = data || fallbackData;
 
-  // --- NEW: determine whether API is effectively unavailable
-  // Show banner only when neither primary nor fallback provided data
   const apiUnavailable = (!data && !fallbackData) || (error && !fallbackData);
-  // --- END NEW
 
-  // --- NORMALIZE payload: guarantee nested fields exist to avoid runtime `undefined` reads ---
   const payload = {
     summary: {
       totalSpend: displayData?.summary?.totalSpend ?? 0,
@@ -267,7 +391,6 @@ export default function Home() {
     source: displayData?.source ?? undefined,
   } as ExpenseResponse;
 
-  // Use the normalized payload to compute rates — avoids reading from partial displayData
   const flaggedRate = useMemo(() => {
     if (!payload.transactions.length) return "0%";
     return `${Math.round((payload.summary.flaggedCount / payload.transactions.length) * 100)}%`;
@@ -280,23 +403,6 @@ export default function Home() {
     setUploadError(null);
 
     try {
-      // Parse CSV on frontend for preview (optional)
-      const isCSV =
-        file.type === "text/csv" ||
-        file.name.toLowerCase().endsWith(".csv") ||
-        file.type === "text/plain";
-
-      if (isCSV) {
-        try {
-          const transactions = await parseFile(file);
-          setParsedTransactions(transactions);
-          console.log(`Parsed ${transactions.length} transactions from CSV`);
-        } catch (parseErr) {
-          console.error("CSV parsing error:", parseErr);
-        }
-      }
-
-      // Upload to backend
       const formData = new FormData();
       formData.append("files", file);
 
@@ -310,9 +416,7 @@ export default function Home() {
         setUploadSuccess(
           `Successfully uploaded! ${transactionsAdded} transactions processed, ${transactionsSaved} saved to database${anomaliesDetected > 0 ? `, ${anomaliesDetected} anomalies detected` : ""}.`
         );
-        // Refresh data after successful upload
         void mutate();
-        // Clear success message after 5 seconds
         setTimeout(() => setUploadSuccess(null), 5000);
       }
     } catch (err: any) {
@@ -323,7 +427,6 @@ export default function Home() {
         "Failed to upload file";
       setUploadError(errorMessage);
       console.error("Upload error:", err);
-      // Clear error message after 5 seconds
       setTimeout(() => setUploadError(null), 5000);
     } finally {
       setUploading(false);
@@ -333,42 +436,46 @@ export default function Home() {
   const handleExport = async () => {
     try {
       const url = `${API_BASE_URL}/api/export`;
-  
+
       const resp = await fetch(url, {
         method: "GET",
         headers: { Accept: "text/csv" },
       });
-  
+
       if (!resp.ok) {
         const text = await resp.text();
         console.error("Export error response:", text);
         alert("Export failed. Check console.");
         return;
       }
-  
+
       const blob = await resp.blob();
       const filename =
         resp.headers
           .get("content-disposition")
           ?.split("filename=")[1]
           ?.replace(/"/g, "") || "helix_expense_report.csv";
-  
+
       const blobUrl = window.URL.createObjectURL(blob);
-  
+
       const a = document.createElement("a");
       a.href = blobUrl;
       a.download = filename;
       document.body.appendChild(a);
       a.click();
       a.remove();
-  
+
       window.URL.revokeObjectURL(blobUrl);
     } catch (err) {
       console.error("Export failed:", err);
       alert("Export failed — see console");
     }
   };
-  
+
+  const insights: InsightItem[] = insightsData?.insights ?? [];
+  const recommendations: string[] = insightsData?.recommendations ?? [];
+  const trends = insightsData?.trends ?? [];
+
   return (
     <div className="min-h-screen bg-slate-950 text-white">
       <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
@@ -385,20 +492,29 @@ export default function Home() {
                 className={`h-2 w-2 rounded-full ${
                   payload.source === "database"
                     ? "bg-emerald-400"
-                    : payload.source === "python-service"
-                      ? "bg-blue-400"
+                    : payload.source === "fallback"
+                      ? "bg-yellow-400"
                       : "bg-yellow-400"
                 }`}
               />
               {payload.source === "database"
                 ? "Live · Database"
-                : payload.source === "python-service"
-                  ? "Live · Python"
-                  : payload.source === "fallback"
-                    ? "Cache snapshot"
-                    : "Connecting…"}
+                : payload.source === "fallback"
+                  ? "Cache snapshot"
+                  : "Connecting…"}
             </div>
-
+            <button
+              onClick={() => setInsightsOpen(true)}
+              className="cursor-pointer rounded-full border border-indigo-500/40 bg-indigo-500/10 px-3 py-1 text-xs font-semibold text-indigo-200 hover:bg-indigo-500/20 transition"
+            >
+              AI Insights
+            </button>
+            <button
+              onClick={handleExport}
+              className="cursor-pointer rounded-full border border-white/10 px-3 py-1 text-xs text-slate-300 hover:border-indigo-400/60 hover:text-white transition"
+            >
+              Export CSV
+            </button>
           </div>
         </nav>
 
@@ -420,9 +536,11 @@ export default function Home() {
           </div>
         ) : null}
 
-        <section className="mt-6 grid gap-4 md:grid-cols-3">
+        {/* Stat Cards */}
+        <section className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {isLoading ? (
             <>
+              <SkeletonCard />
               <SkeletonCard />
               <SkeletonCard />
               <SkeletonCard />
@@ -432,7 +550,7 @@ export default function Home() {
               <StatCard
                 label="Total spend (90d)"
                 value={formatCurrency(payload?.summary?.totalSpend ?? 0, true)}
-                helper={payload.source === "python-service" ? "Synced live" : "Using cache"}
+                helper="Synced live · Database"
               />
               <StatCard
                 label="Flagged transactions"
@@ -442,16 +560,22 @@ export default function Home() {
               <StatCard
                 label="Average ticket size"
                 value={formatCurrency(Number(payload?.summary?.avgTicket ?? 0))}
-                helper="AI confidence ≥ 78%"
+                helper="Per transaction"
+              />
+              <StatCard
+                label="Total transactions"
+                value={payload.transactions.length.toString()}
+                helper="All time"
               />
             </>
           )}
         </section>
 
+        {/* Upload / Top Merchants + Line Chart */}
         <section className="mt-6 grid gap-6 lg:grid-cols-3">
-          <div className="rounded-3xl border border-white/10 bg-white/5 overflow-hidden">
+          <div className="rounded-3xl border border-white/10 bg-white/5 overflow-hidden h-full">
             {uploading ? (
-              <div className="h-48 flex items-center justify-center p-6">
+              <div className="h-full flex items-center justify-center p-6">
                 <UploadProgressOverlay fileName={fileName} />
               </div>
             ) : (
@@ -459,10 +583,10 @@ export default function Home() {
                 onUpload={handleUpload}
                 uploading={uploading}
                 fileName={fileName}
-                parsing={parsing}
               />
             )}
           </div>
+
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6 lg:col-span-2">
             <div className="flex items-center justify-between">
               <div>
@@ -471,9 +595,6 @@ export default function Home() {
                 </p>
                 <p className="text-2xl font-semibold">AI-normalized spend</p>
               </div>
-              <p className="text-xs text-slate-400">
-                {isLoading ? "Refreshing…" : "Auto-refresh · 60s"}
-              </p>
             </div>
             {isLoading ? (
               <SkeletonChart />
@@ -515,9 +636,10 @@ export default function Home() {
           </div>
         </section>
 
+        {/* Category Pie + Transactions Table */}
         <section className="mt-6 grid gap-6 lg:grid-cols-3">
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-            <div className="flex items-center justify-between">
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-6 flex flex-col max-h-[32rem]">
+            <div className="flex items-center justify-between shrink-0">
               <div>
                 <p className="text-xs uppercase tracking-[0.3em] text-slate-400">
                   Category share
@@ -528,7 +650,7 @@ export default function Home() {
                 {payload.categories.length} categories
               </span>
             </div>
-            <div className="mt-6 h-64">
+            <div className="mt-6 h-46 shrink-0">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -559,7 +681,7 @@ export default function Home() {
                 </PieChart>
               </ResponsiveContainer>
             </div>
-            <ul className="space-y-2">
+            <ul className="mt-4 space-y-2 overflow-y-auto flex-1 min-h-0">
               {payload.categories.map((category, index) => (
                 <li
                   key={category.label}
@@ -580,6 +702,7 @@ export default function Home() {
               ))}
             </ul>
           </div>
+
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6 lg:col-span-2">
             <div className="flex items-center justify-between">
               <div>
@@ -588,85 +711,90 @@ export default function Home() {
                 </p>
                 <p className="text-2xl font-semibold">AI anomaly review</p>
               </div>
-              <button className="text-sm text-indigo-200 hover:text-white">
-                View all
-              </button>
             </div>
-            <div className="mt-4 overflow-x-auto">
+            <div className="mt-4 overflow-x-auto overflow-y-auto max-h-96">
               {isLoading ? (
                 <SkeletonTable />
               ) : (
-              <table className="min-w-full text-left text-sm">
-                <thead>
-                  <tr className="text-slate-300">
-                    <th className="py-2">Merchant</th>
-                    <th className="py-2">Category</th>
-                    <th className="py-2">Amount</th>
-                    <th className="py-2">Date</th>
-                    <th className="py-2">Anomaly</th>
-                    <th className="py-2">Confidence</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {payload.transactions.map((transaction) => (
-                    <tr
-                      key={transaction.id}
-                      className="border-t border-white/10 text-slate-100"
-                    >
-                      <td className="py-3 font-medium">{transaction.merchant}</td>
-                      <td className="py-3 text-slate-300">{transaction.category}</td>
-                      <td className="py-3 font-semibold">
-                        {formatCurrency(transaction.amount)}
-                      </td>
-                      <td className="py-3 text-slate-300">
-                        {new Date(transaction.date).toLocaleDateString()}
-                      </td>
-                      <td className="py-3">
-                        <AnomalyBadge anomaly={transaction.anomaly} />
-                        {transaction.note ? (
-                          <p className="text-xs text-slate-400">{transaction.note}</p>
-                        ) : null}
-                      </td>
-                      <td className="py-3">
-                        <div className="flex items-center gap-2">
-                          <div className="h-1.5 flex-1 rounded-full bg-white/10">
-                            <div
-                              className={`h-full rounded-full ${
-                                transaction.anomaly
-                                  ? "bg-rose-400"
-                                  : "bg-emerald-400"
-                              }`}
-                              style={{
-                                width: `${transaction.confidence * 100}%`,
-                              }}
-                            />
-                          </div>
-                          <span className="text-xs text-slate-300">
-                            {(transaction.confidence * 100).toFixed(0)}%
-                          </span>
-                        </div>
-                      </td>
+                <table className="min-w-full text-left text-sm">
+                  <thead className="sticky top-0 bg-slate-900/90 backdrop-blur-sm">
+                    <tr className="text-slate-300">
+                      <th className="py-2">Merchant</th>
+                      <th className="py-2">Category</th>
+                      <th className="py-2">Amount</th>
+                      <th className="py-2">Date</th>
+                      <th className="py-2">Anomaly</th>
+                      <th className="py-2">Confidence</th>
                     </tr>
-                  ))}
-                  {!payload.transactions.length ? (
-                    <tr>
-                      <td
-                        colSpan={6}
-                        className="py-6 text-center text-slate-400"
+                  </thead>
+                  <tbody>
+                    {payload.transactions.map((transaction) => (
+                      <tr
+                        key={transaction.id}
+                        className="border-t border-white/10 text-slate-100"
                       >
-                        No transactions yet. Upload a statement to begin.
-                      </td>
-                    </tr>
-                  ) : null}
-                </tbody>
-              </table>
+                        <td className="py-3 font-medium">{transaction.merchant}</td>
+                        <td className="py-3 text-slate-300">{transaction.category}</td>
+                        <td className="py-3 font-semibold">
+                          {formatCurrency(transaction.amount)}
+                        </td>
+                        <td className="py-3 text-slate-300">
+                          {new Date(transaction.date).toLocaleDateString()}
+                        </td>
+                        <td className="py-3">
+                          <AnomalyBadge anomaly={transaction.anomaly} />
+                          {transaction.note ? (
+                            <p className="text-xs text-slate-400">{transaction.note}</p>
+                          ) : null}
+                        </td>
+                        <td className="py-3">
+                          <div className="flex items-center gap-2">
+                            <div className="h-1.5 flex-1 rounded-full bg-white/10">
+                              <div
+                                className={`h-full rounded-full ${
+                                  transaction.anomaly
+                                    ? "bg-rose-400"
+                                    : "bg-emerald-400"
+                                }`}
+                                style={{
+                                  width: `${transaction.confidence * 100}%`,
+                                }}
+                              />
+                            </div>
+                            <span className="text-xs text-slate-300">
+                              {(transaction.confidence * 100).toFixed(0)}%
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {!payload.transactions.length ? (
+                      <tr>
+                        <td
+                          colSpan={6}
+                          className="py-6 text-center text-slate-400"
+                        >
+                          No transactions yet. Upload a statement to begin.
+                        </td>
+                      </tr>
+                    ) : null}
+                  </tbody>
+                </table>
               )}
             </div>
           </div>
         </section>
+
       </div>
+
+      <InsightsModal
+        open={insightsOpen}
+        onClose={() => setInsightsOpen(false)}
+        insightsLoading={insightsLoading}
+        insights={insights}
+        recommendations={recommendations}
+        trends={trends}
+      />
     </div>
   );
 }
-
-

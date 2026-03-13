@@ -1,7 +1,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.0-flash";
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash-lite";
 const MAX_RETRIES = 3;
 
 let cachedModel = null;
@@ -69,6 +69,26 @@ Spend:$${summary.totalSpend} Txns:${summary.totalTransactions} Avg:$${summary.av
 TopCategories:${topCats} MonthlyTrend:${monthTrend}
 {"insights":[{"type":"spending_pattern|category_alert|anomaly|trend","title":"short","description":"2 sentences","severity":"info|warning|error"}],"recommendations":["string"],"trends":[{"metric":"name","change":"+X%","period":"MoM"}]}
 Give 3 insights, 3 recommendations, 2 trends.`;
+
+  const text = await generateWithRetry(prompt);
+  return parseJSON(text);
+};
+
+/**
+ * Categorize a batch of transactions in one Gemini call.
+ * Returns array of { index, category, confidence }
+ */
+export const categorizeBatch = async (transactions) => {
+  if (!transactions || transactions.length === 0) return [];
+
+  const list = transactions
+    .map((t, i) => `${i}:${t.merchant}/$${t.amount}`)
+    .join(", ");
+
+  const prompt = `Categorize these corporate expenses. Return ONLY a valid JSON array.
+Transactions (index:merchant/amount): ${list}
+Categories: Travel, Meals, Software, Office, Utilities, R&D, Operations, Wellness, Other
+[{"index":0,"category":"Travel","confidence":0.9}]`;
 
   const text = await generateWithRetry(prompt);
   return parseJSON(text);

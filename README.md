@@ -10,8 +10,8 @@ An AI-powered expense management console that parses bank statements, categorize
 ### CSV Upload & Processing
 ![CSV Upload](assets/upload.png)
 
-### Transaction Table with Anomaly Detection
-![Transactions](assets/transactions.png)
+<!-- ### Transaction Table with Anomaly Detection
+![Transactions](assets/transactions.png) -->
 
 ## Tech Stack
 

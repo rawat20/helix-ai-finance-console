@@ -1,24 +1,6 @@
 import prisma from "./prisma.js";
 
 /**
- * Create a new transaction
- */
-export const createTransaction = async (transactionData) => {
-  return await prisma.transaction.create({
-    data: {
-      date: new Date(transactionData.date),
-      description: transactionData.description || null,
-      amount: transactionData.amount,
-      merchant: transactionData.merchant,
-      category: transactionData.category || null,
-      aiCategory: transactionData.aiCategory || null,
-      anomalyFlag: transactionData.anomalyFlag || false,
-      reason: transactionData.reason || null,
-    },
-  });
-};
-
-/**
  * Create multiple transactions in bulk
  */
 export const createTransactionsBulk = async (transactions) => {
@@ -30,6 +12,7 @@ export const createTransactionsBulk = async (transactions) => {
       merchant: t.merchant,
       category: t.category || null,
       aiCategory: t.aiCategory || null,
+      confidence: t.aiConfidence || null,
       anomalyFlag: t.anomalyFlag || false,
       reason: t.reason || null,
     })),
@@ -78,45 +61,6 @@ export const getTransactions = async (filters = {}) => {
 };
 
 /**
- * Get transaction by ID
- */
-export const getTransactionById = async (id) => {
-  return await prisma.transaction.findUnique({
-    where: { id },
-  });
-};
-
-/**
- * Update transaction
- */
-export const updateTransaction = async (id, updateData) => {
-  const data = {};
-
-  if (updateData.date) data.date = new Date(updateData.date);
-  if (updateData.description !== undefined) data.description = updateData.description;
-  if (updateData.amount !== undefined) data.amount = updateData.amount;
-  if (updateData.merchant) data.merchant = updateData.merchant;
-  if (updateData.category !== undefined) data.category = updateData.category;
-  if (updateData.aiCategory !== undefined) data.aiCategory = updateData.aiCategory;
-  if (updateData.anomalyFlag !== undefined) data.anomalyFlag = updateData.anomalyFlag;
-  if (updateData.reason !== undefined) data.reason = updateData.reason;
-
-  return await prisma.transaction.update({
-    where: { id },
-    data,
-  });
-};
-
-/**
- * Delete transaction
- */
-export const deleteTransaction = async (id) => {
-  return await prisma.transaction.delete({
-    where: { id },
-  });
-};
-
-/**
  * Get transaction statistics
  */
 export const getTransactionStats = async (filters = {}) => {
@@ -150,4 +94,3 @@ export const getTransactionStats = async (filters = {}) => {
     anomalyCount,
   };
 };
-

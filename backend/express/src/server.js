@@ -5,7 +5,6 @@ import express from "express";
 import cors from "cors";
 import routes from "./routes/index.js";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
-import fs from "fs";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -13,18 +12,6 @@ const PORT = process.env.PORT || 4000;
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-app.get("/", (_req, res) => {
-  res.json({
-    success: true,
-    message: "Helix AI Finance API is running",
-    timestamp: Date.now(),
-  });
-});
-
-app.get("/api/health", (_req, res) => {
-  res.json({ status: "ok", database: "supabase", ai: "gemini" });
-});
 
 // Legacy /api/expenses — served from DB
 app.get("/api/expenses", async (_req, res) => {
@@ -135,10 +122,7 @@ app.listen(PORT, () => {
   console.log(`Helix AI Finance API running on http://localhost:${PORT}`);
   console.log(`Available routes:`);
   console.log(`  POST /api/upload`);
-  console.log(`  POST /api/categorize`);
-  console.log(`  GET  /api/insights`);
-  console.log(`  GET  /api/analytics`);
   console.log(`  GET  /api/transactions`);
+  console.log(`  GET  /api/insights`);
   console.log(`  GET  /api/export`);
-  console.log(`  GET  /api/health`);
 });

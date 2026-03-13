@@ -78,7 +78,7 @@ export const getTransactionsList = async (req, res, next) => {
           amount: Number(t.amount),
           date: t.date.toISOString().split("T")[0],
           anomaly: t.anomalyFlag,
-          confidence: 0.85,
+          confidence: t.confidence ?? 0.85,
           note: t.reason || null,
           description: t.description || "",
         })),
