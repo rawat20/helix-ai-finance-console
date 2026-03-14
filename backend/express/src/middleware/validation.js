@@ -1,4 +1,4 @@
-import { body, query, validationResult } from "express-validator";
+import { query, validationResult } from "express-validator";
 
 /**
  * Middleware to check validation results
@@ -14,13 +14,6 @@ export const validate = (req, res, next) => {
   }
   next();
 };
-
-/**
- * Validation rules for POST /upload
- */
-export const uploadValidation = [
-  validate,
-];
 
 /**
  * Validation rules for GET /insights

@@ -1,138 +1,123 @@
 # Express API Documentation
 
+## Base URL
+
+```
+http://localhost:4000
+```
+
+---
+
 ## Routes
 
 ### POST /api/upload
 
-Upload expense files for AI processing.
+Upload one or more CSV files for AI processing and storage.
 
 **Request:**
 - Content-Type: `multipart/form-data`
-- Body: `files` (array of files, max 5 files, 10MB each)
-- Accepted formats: CSV, Excel (.xlsx, .xls), JSON, TXT
+- Field name: `files` (array, max 5 files, 10MB each)
+- Accepted formats: `.csv`, `.xlsx`, `.xls`, `.json`, `.txt`
 
 **Response:**
 ```json
 {
   "success": true,
-  "message": "Successfully processed 2 file(s)",
+  "message": "Successfully processed 1 file(s)",
   "data": {
-    "filesProcessed": 2,
-    "transactionsAdded": 45,
-    "anomaliesDetected": 3,
-    "processingTime": 1.2
-  }
-}
-```
-
-**Validation:**
-- File size limit: 10MB per file
-- Max files: 5 per request
-- File type validation
-
-**Notes:**
-- CSV files are automatically parsed and normalized
-- Returns parsed transactions in the response
-
----
-
-### POST /api/parse
-
-Parse CSV file(s) and return normalized transaction list.
-
-**Request:**
-- Content-Type: `multipart/form-data`
-- Body: `files` (array of CSV files, max 5 files, 10MB each)
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "transactions": [
-      {
-        "date": "2024-12-04",
-        "amount": 482.23,
-        "description": "Grocery shopping",
-        "merchant": "Midtown Grocer",
-        "category": "Groceries"
-      }
-    ],
-    "count": 1,
+    "filesProcessed": 1,
+    "transactions": [...],
+    "transactionsAdded": 25,
+    "transactionsSaved": 25,
+    "anomaliesDetected": 2,
     "errors": []
   }
 }
 ```
 
-**Normalized Format:**
-All transactions are returned in a consistent format:
-- `date`: ISO 8601 format (YYYY-MM-DD)
-- `amount`: Positive number (currency symbols removed)
-- `description`: Transaction description or empty string
-- `merchant`: Merchant name or description fallback
-- `category`: Category if present in CSV, otherwise `null`
+**Notes:**
+- CSV files are parsed and normalized automatically (handles common column name variations)
+- Gemini AI runs batch categorization on all transactions (`aiCategory`, `aiConfidence`)
+- Gemini AI runs anomaly detection — flags suspicious transactions (`anomalyFlag`, `reason`)
+- If Gemini is unavailable, a rule-based fallback flags transactions exceeding 3x the batch average
+- `skipDuplicates: true` — re-uploading the same file will not create duplicate records
+- `transactionsSaved` may be less than `transactionsAdded` if duplicates were skipped
 
-**Supported Column Names:**
-The parser automatically recognizes common column name variations:
-- **Date**: `date`, `transaction date`, `posted date`, `payment date`
-- **Amount**: `amount`, `transaction amount`, `debit`, `credit`, `value`
-- **Description**: `description`, `transaction description`, `details`, `memo`, `notes`
-- **Merchant**: `merchant`, `vendor`, `payee`, `name`, `store`
-- **Category**: `category`, `type`, `expense category`, `classification`
+**Error responses:**
+```json
+{ "success": false, "error": "No file provided" }
+{ "success": false, "error": "File too large", "message": "Maximum file size is 10MB" }
+{ "success": false, "error": "Too many files", "message": "Maximum 5 files allowed per upload" }
+```
 
 ---
 
-### POST /api/categorize
+### GET /api/transactions
 
-Categorize a single transaction using AI.
+Fetch transactions from the database with optional filters and pagination.
 
-**Request:**
-```json
-{
-  "merchant": "Midtown Grocer",
-  "amount": 482.23,
-  "date": "2024-12-04",  // Optional, ISO 8601 format
-  "description": "Grocery shopping"  // Optional
-}
-```
+**Query Parameters:**
+
+| Parameter | Type | Description |
+|---|---|---|
+| `startDate` | ISO 8601 date | Filter transactions from this date |
+| `endDate` | ISO 8601 date | Filter transactions up to this date |
+| `merchant` | string | Case-insensitive partial match on merchant name |
+| `category` | string | Exact match on original CSV category |
+| `aiCategory` | string | Exact match on AI-assigned category |
+| `anomalyFlag` | `"true"` or `"false"` | Filter flagged/normal transactions |
+| `limit` | number | Max results to return (default: `100`) |
+| `skip` | number | Records to skip for pagination (default: `0`) |
 
 **Response:**
 ```json
 {
   "success": true,
   "data": {
-    "category": "Groceries",
-    "confidence": 0.93,
-    "reasoning": "Recurring supermarket spend that maps to groceries.",
-    "merchant": "Midtown Grocer",
-    "amount": 482.23,
-    "date": "2024-12-04",
-    "source": "openai"
+    "summary": {
+      "totalSpend": 14823.45,
+      "flaggedCount": 2,
+      "avgTicket": 593.74
+    },
+    "categories": [
+      { "label": "Software", "value": 6761.87 },
+      { "label": "Travel", "value": 2269.56 }
+    ],
+    "monthlySpending": [
+      { "label": "Nov 2024", "value": 1500.55 },
+      { "label": "Dec 2024", "value": 13322.90 }
+    ],
+    "transactions": [
+      {
+        "id": "uuid",
+        "merchant": "AWS",
+        "category": "Software",
+        "amount": 340.60,
+        "date": "2024-12-07",
+        "anomaly": false,
+        "confidence": 0.95,
+        "note": null,
+        "description": "Cloud compute instance"
+      }
+    ],
+    "source": "database"
   }
 }
 ```
-
-**Validation:**
-- `merchant`: Required, 1-200 characters
-- `amount`: Required, positive number (min 0.01)
-- `date`: Optional, ISO 8601 format (YYYY-MM-DD)
-- `description`: Optional, max 500 characters
-
-**Notes:**
-- Primary categorization uses OpenAI responses API with structured JSON schema.
-- Requires `OPENAI_API_KEY` (and optional `OPENAI_MODEL`) environment variables.
-- Falls back to Python service or local heuristics if AI is unavailable.
 
 ---
 
 ### GET /api/insights
 
-Get AI-generated insights and recommendations.
+Get AI-generated insights, recommendations, and trends from real transaction data.
 
 **Query Parameters:**
-- `startDate` (optional): ISO 8601 date format
-- `endDate` (optional): ISO 8601 date format
-- `category` (optional): Filter by category (max 100 chars)
+
+| Parameter | Type | Description |
+|---|---|---|
+| `startDate` | ISO 8601 date | Filter data from this date |
+| `endDate` | ISO 8601 date | Filter data up to this date |
+| `category` | string | Filter by category (max 100 chars) |
 
 **Response:**
 ```json
@@ -143,97 +128,57 @@ Get AI-generated insights and recommendations.
       {
         "type": "spending_pattern",
         "title": "Spending increased 12% this month",
-        "description": "...",
+        "description": "Cloud and software costs drove a notable spike in December.",
         "severity": "info"
       }
     ],
     "recommendations": [
-      "Review flagged transactions weekly",
-      "Set up category-based spending limits"
+      "Review flagged transactions for potential fraud",
+      "Set monthly budget limits per category"
     ],
     "trends": [
       {
-        "metric": "Total Spend",
+        "metric": "Dec 2024",
         "change": "+12%",
         "period": "MoM"
       }
     ],
-    "anomalies": [
-      {
-        "id": "txn_0002",
-        "amount": 6421.87,
-        "merchant": "Nimbus Cloud AI",
-        "date": "2024-12-04",
-        "reason": "Spike beyond 30-day mean"
-      }
-    ],
     "period": {
-      "startDate": "2024-11-01",
-      "endDate": "2024-12-04",
+      "startDate": null,
+      "endDate": null,
       "category": null
-    }
+    },
+    "source": "gemini"
   }
 }
 ```
 
+**Notes:**
+- `source` is `"gemini"` when AI generates the response, `"computed"` when falling back to rule-based insights
+- Returns an empty state with an upload hint if no transactions exist in the database
+- Insight `severity` values: `"info"`, `"warning"`, `"error"`
+- Insight `type` values: `"spending_pattern"`, `"category_alert"`, `"anomaly"`, `"trend"`
+
 **Validation:**
-- `startDate`: Optional, ISO 8601 format
-- `endDate`: Optional, ISO 8601 format
+- `startDate` / `endDate`: Optional, must be ISO 8601 format
 - `category`: Optional, max 100 characters
 
 ---
 
-### GET /api/analytics
+### GET /api/export
 
-Get detailed analytics and aggregated data.
-
-**Query Parameters:**
-- `period` (optional): `7d`, `30d`, `90d`, `1y`, `all` (default: `90d`)
-- `groupBy` (optional): `day`, `week`, `month`, `category` (default: `month`)
+Download all transactions as a CSV file.
 
 **Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "summary": {
-      "totalSpend": 61200.0,
-      "totalTransactions": 408,
-      "avgTicket": 150.0,
-      "flaggedCount": 12,
-      "period": "90d"
-    },
-    "timeSeries": [
-      {
-        "period": "Jul 2024",
-        "value": 17200.0,
-        "count": 45
-      }
-    ],
-    "categoryBreakdown": [
-      {
-        "category": "Operations",
-        "total": 19800.0,
-        "count": 120,
-        "avg": 165.0
-      }
-    ],
-    "topMerchants": [
-      {
-        "merchant": "Nimbus Cloud AI",
-        "total": 12843.74,
-        "count": 2
-      }
-    ],
-    "period": "90d",
-    "groupBy": "month"
-  }
-}
-```
+- Content-Type: `text/csv`
+- Content-Disposition: `attachment; filename="helix_expense_report.csv"`
 
-**Validation:**
-- `period`: Must be one of: `7d`, `30d`, `90d`, `1y`, `all`
-- `groupBy`: Must be one of: `day`, `week`, `month`, `category`
+**CSV columns:** `id`, `date`, `merchant`, `category`, `amount`, `anomaly`, `note`
+
+**Notes:**
+- Returns up to 1000 transactions
+- `category` uses `aiCategory` as fallback if original category is null
+- Returns 404 JSON if no transactions exist
 
 ---
 
@@ -245,34 +190,50 @@ All routes return consistent error responses:
 {
   "success": false,
   "error": "Error message",
-  "details": []  // For validation errors
+  "details": []
 }
 ```
 
 **Status Codes:**
-- `200`: Success
-- `400`: Bad Request (validation errors, invalid input)
-- `404`: Route not found
-- `500`: Internal server error
+
+| Code | Meaning |
+|---|---|
+| `200` | Success |
+| `400` | Bad request (validation error, invalid file type/size) |
+| `404` | Route not found or no data available |
+| `500` | Internal server error |
+
+In development (`NODE_ENV=development`), error responses also include a `stack` field with the full stack trace.
 
 ---
 
 ## Architecture
 
-The API follows a modular structure:
-
 ```
 src/
-├── controllers/     # Business logic handlers
-├── middleware/      # Validation, error handling, file upload
-├── routes/          # Route definitions
-└── server.js        # Express app setup
+├── server.js           # Express app entry point, export route
+├── routes/
+│   └── index.js        # Route definitions
+├── controllers/
+│   ├── uploadController.js
+│   ├── transactionsController.js
+│   └── insightsController.js
+├── services/
+│   ├── geminiService.js       # Google Gemini AI integration
+│   ├── transactionService.js  # Prisma DB queries
+│   ├── csvParser.js           # CSV parsing and normalization
+│   └── prisma.js              # Prisma client singleton
+└── middleware/
+    ├── upload.js        # Multer file upload config
+    ├── validation.js    # express-validator rules
+    └── errorHandler.js  # Centralized error handling
 ```
 
-**Features:**
-- ✅ Input validation with express-validator
-- ✅ File upload handling with multer
-- ✅ Centralized error handling
-- ✅ Fallback responses when Python service is unavailable
-- ✅ Type-safe request/response handling
+**AI Provider:** Google Gemini (configured via `GEMINI_API_KEY` and `GEMINI_MODEL` env vars)
 
+**Features:**
+- Input validation with `express-validator`
+- File upload handling with `multer` (memory storage, no disk writes)
+- Centralized error handling with typed error responses
+- Graceful fallbacks when Gemini is unavailable
+- Batch AI processing (single Gemini call per upload, not per transaction)

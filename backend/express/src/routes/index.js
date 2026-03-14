@@ -1,6 +1,6 @@
 import express from "express";
 import { upload } from "../middleware/upload.js";
-import { uploadValidation, insightsValidation } from "../middleware/validation.js";
+import { insightsValidation } from "../middleware/validation.js";
 import { uploadFile } from "../controllers/uploadController.js";
 import { getTransactionsList } from "../controllers/transactionsController.js";
 import { getInsights } from "../controllers/insightsController.js";
@@ -14,7 +14,6 @@ const router = express.Router();
 router.post(
   "/upload",
   upload.array("files", 5),
-  uploadValidation,
   uploadFile
 );
 

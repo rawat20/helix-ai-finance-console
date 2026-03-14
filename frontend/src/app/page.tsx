@@ -364,20 +364,14 @@ export default function Home() {
     }
   );
 
-  const { data: fallbackData } = useSWR(
-    data ? null : `${API_BASE_URL}/api/expenses`,
-    fetcher,
-    { revalidateOnFocus: false }
-  );
-
   const { data: insightsData, isLoading: insightsLoading } = useSWR<InsightsData>(
     insightsOpen ? `${API_BASE_URL}/api/insights` : null,
     fetcher
   );
 
-  const displayData = data || fallbackData;
+  const displayData = data;
 
-  const apiUnavailable = (!data && !fallbackData) || (error && !fallbackData);
+  const apiUnavailable = !data || !!error;
 
   const payload = {
     summary: {

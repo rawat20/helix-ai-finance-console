@@ -6,6 +6,11 @@ const MAX_RETRIES = 3;
 
 let cachedModel = null;
 
+const SYSTEM_INSTRUCTION = `You are a corporate finance auditor analyzing company expense transactions.
+Your job is to detect anomalies, categorize expenses accurately, and provide concise insights.
+Focus on financial risk, unusual spending patterns, and operational efficiency.
+Respond only in valid JSON as instructed.`;
+
 const getModel = () => {
   if (!GEMINI_API_KEY) {
     throw Object.assign(new Error("Missing GEMINI_API_KEY environment variable"), {
@@ -13,7 +18,10 @@ const getModel = () => {
     });
   }
   if (!cachedModel) {
-    cachedModel = new GoogleGenerativeAI(GEMINI_API_KEY).getGenerativeModel({ model: GEMINI_MODEL });
+    cachedModel = new GoogleGenerativeAI(GEMINI_API_KEY).getGenerativeModel({
+      model: GEMINI_MODEL,
+      systemInstruction: SYSTEM_INSTRUCTION,
+    });
   }
   return cachedModel;
 };
@@ -41,19 +49,6 @@ const generateWithRetry = async (prompt, retries = MAX_RETRIES) => {
       }
     }
   }
-};
-
-/**
- * Categorize a single transaction using Gemini.
- * Returns { category, confidence, reasoning }
- */
-export const categorizeWithGemini = async ({ merchant, description, amount }) => {
-  const prompt = `Classify this corporate expense. Return ONLY valid JSON.
-Merchant: ${merchant} | Amount: $${amount} | Note: ${description ?? "n/a"}
-{"category":"Travel|Meals|Software|Office|Utilities|R&D|Operations|Wellness|Other","confidence":0.0,"reasoning":"brief reason"}`;
-
-  const text = await generateWithRetry(prompt);
-  return parseJSON(text);
 };
 
 /**
