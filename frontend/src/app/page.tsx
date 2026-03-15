@@ -15,60 +15,79 @@ import {
   Cell,
 } from "recharts";
 
+// ---------------------------------------------------------------------------
+// TypeScript type definitions — describe the shape of data coming from the API
+// ---------------------------------------------------------------------------
+
+/** summary block returned inside /api/transactions response. */
 type ExpenseSummary = {
   totalSpend: number;
   flaggedCount: number;
   avgTicket: number;
 };
 
+/** A single { label, value } point used by the pie chart (category breakdown). */
 type CategoryPoint = {
   label: string;
   value: number;
 };
 
+/** A single { label, value } point used by the line chart (monthly spending). */
 type MonthlyPoint = {
   label: string;
   value: number;
 };
 
+/** Full shape of one transaction row as returned by the backend. */
 type Transaction = {
   id: string;
   merchant: string;
   category: string;
   amount: number;
   date: string;
-  anomaly: boolean;
-  confidence: number;
-  note?: string;
+  anomaly: boolean;   // true = flagged by Gemini anomaly detection
+  confidence: number; // 0–1, rendered as a progress bar in the table
+  note?: string;      // optional reason when anomaly is true
 };
 
+/** Top-level API response envelope from /api/transactions and /api/expenses. */
 type ExpenseResponse = {
   summary: ExpenseSummary;
   categories: CategoryPoint[];
   monthlySpending: MonthlyPoint[];
   transactions: Transaction[];
-  source?: string;
+  source?: string; // "database" | "fallback" — drives the status dot in the nav
 };
 
+/** A single AI-generated insight card returned by /api/insights. */
 type InsightItem = {
   type: string;
   title: string;
   description: string;
-  severity: "info" | "warning";
+  severity: "info" | "warning"; // controls card border/bg color in InsightsModal
 };
 
+/** Full response from /api/insights — shown inside InsightsModal. */
 type InsightsData = {
   insights: InsightItem[];
   recommendations: string[];
   trends: { metric: string; change: string; period: string }[];
 };
 
+/**
+ * Backend API base URL.
+ */
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000";
 
+/**
+ * SWR data fetcher using axios.
+ * Unwraps the nested `data` field that the Express API wraps responses in
+ */
 const fetcher = (url: string) =>
   axios.get(url).then((res) => res.data?.data ?? res.data);
 
+/** Fixed color palette cycled for pie chart slices and category legend dots. */
 const PIE_COLORS = ["#6366F1", "#F97316", "#34D399", "#F43F5E", "#22D3EE", "#FBBF24"];
 
 const formatCurrency = (value: number, compact = false) =>
@@ -78,6 +97,9 @@ const formatCurrency = (value: number, compact = false) =>
     notation: compact ? "compact" : "standard",
   }).format(value);
 
+/**
+ * StatCard — renders a single KPI tiles
+ */
 function StatCard({
   label,
   value,
@@ -98,6 +120,7 @@ function StatCard({
   );
 }
 
+
 function FileUploadCard({
   onUpload,
   uploading,
@@ -107,6 +130,7 @@ function FileUploadCard({
   uploading: boolean;
   fileName: string | null;
 }) {
+  /** Fires when the hidden file input changes; extracts the first file and delegates to onUpload. */
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -119,6 +143,7 @@ function FileUploadCard({
       htmlFor="expense-upload"
       className="flex h-full min-h-48 cursor-pointer flex-col items-center justify-center rounded-3xl border-2 border-dashed border-white/20 bg-white/5 p-6 text-center transition hover:border-indigo-400/80 hover:bg-white/10"
     >
+      {/* Hidden native file input — the visible label acts as its click target */}
       <input
         id="expense-upload"
         type="file"
@@ -133,6 +158,7 @@ function FileUploadCard({
       <p className="text-sm text-slate-300">
         CSV, Excel, JSON · Each file scanned by the AI classifier
       </p>
+      {/* Status text changes based on upload state */}
       <p className="mt-4 text-sm text-indigo-200">
         {uploading
           ? "Uploading and processing…"
@@ -144,6 +170,9 @@ function FileUploadCard({
   );
 }
 
+/**
+ * SkeletonCard — used as a loader
+ */
 function SkeletonCard() {
   return (
     <div className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-lg shadow-slate-950/20 animate-pulse">
@@ -154,6 +183,10 @@ function SkeletonCard() {
   );
 }
 
+/**
+ * SkeletonTable — animated placeholder shown in place of the transactions table
+ * while data is loading. Renders 5 fake rows.
+ */
 function SkeletonTable() {
   return (
     <div className="animate-pulse space-y-3 mt-4">
@@ -170,6 +203,10 @@ function SkeletonTable() {
   );
 }
 
+/**
+ * SkeletonChart — animated bar-like placeholder shown while the monthly
+ * spending line chart is loading.
+ */
 function SkeletonChart() {
   return (
     <div className="animate-pulse mt-6 h-64 rounded-2xl bg-white/5 flex items-end gap-2 px-4 pb-4">
@@ -184,6 +221,10 @@ function SkeletonChart() {
   );
 }
 
+/**
+ * SkeletonInsights — animated placeholder shown inside InsightsModal while
+ * the /api/insights request is in-flight. Renders 3 fake insight cards.
+ */
 function SkeletonInsights() {
   return (
     <div className="animate-pulse space-y-3 mt-4">
@@ -198,6 +239,9 @@ function SkeletonInsights() {
   );
 }
 
+/**
+ * UploadProgressOverlay — spinning indicator shown inside the upload card
+ */
 function UploadProgressOverlay({ fileName }: { fileName: string | null }) {
   return (
     <div className="flex flex-col items-center justify-center gap-3 h-full">
@@ -213,6 +257,21 @@ function UploadProgressOverlay({ fileName }: { fileName: string | null }) {
   );
 }
 
+/**
+ * InsightsModal — full-screen overlay that renders the Gemini AI insights
+ * fetched from /api/insights.
+ *
+ * The modal is lazy: the SWR call that fetches insights only fires when
+ * insightsOpen becomes true, so no network request is made until the user
+ * explicitly clicks "AI Insights".
+ *
+ * Sections rendered:
+ *  - Trend pills (MoM/YoY metrics from the AI)
+ *  - Insight cards (color-coded by severity: indigo = info, rose = warning)
+ *  - Recommendations list (bullet points from the AI)
+ *
+ * Clicking the backdrop or the × button calls onClose to dismiss.
+ */
 function InsightsModal({
   open,
   onClose,
@@ -228,15 +287,16 @@ function InsightsModal({
   recommendations: string[];
   trends: { metric: string; change: string; period: string }[];
 }) {
+  // Return nothing when modal is closed to keep it out of the DOM entirely
   if (!open) return null;
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4"
-      onClick={onClose}
+      onClick={onClose} // clicking the backdrop dismisses the modal
     >
       <div
         className="relative w-full max-w-3xl max-h-[85vh] overflow-y-auto rounded-3xl border border-white/10 bg-slate-900 p-6 shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()} // prevent backdrop click from firing inside the card
       >
         {/* Header */}
         <div className="flex items-start justify-between mb-5">
@@ -255,7 +315,7 @@ function InsightsModal({
           </button>
         </div>
 
-        {/* Trend pills */}
+        {/* Trend pills — green for negative change (spend down), rose for positive (spend up) */}
         {trends.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-5">
             {trends.map((t) => (
@@ -275,7 +335,7 @@ function InsightsModal({
           </div>
         )}
 
-        {/* Insight cards */}
+        {/* Insight cards — show skeleton while loading, empty state if no data */}
         {insightsLoading ? (
           <SkeletonInsights />
         ) : insights.length === 0 && recommendations.length === 0 ? (
@@ -294,6 +354,7 @@ function InsightsModal({
                 }`}
               >
                 <div className="flex items-start gap-2">
+                  {/* Colored dot matches severity */}
                   <span
                     className={`mt-0.5 h-2 w-2 shrink-0 rounded-full ${
                       item.severity === "warning" ? "bg-rose-400" : "bg-indigo-400"
@@ -309,7 +370,7 @@ function InsightsModal({
           </div>
         )}
 
-        {/* Recommendations */}
+        {/* Recommendations — bulleted list of AI action items */}
         {recommendations.length > 0 && (
           <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4">
             <p className="text-xs uppercase tracking-wide text-slate-400 mb-2">Recommendations</p>
@@ -328,6 +389,7 @@ function InsightsModal({
   );
 }
 
+
 function AnomalyBadge({ anomaly }: { anomaly: boolean }) {
   if (!anomaly) {
     return (
@@ -344,19 +406,28 @@ function AnomalyBadge({ anomaly }: { anomaly: boolean }) {
   );
 }
 
-export default function Home() {
-  const [fileName, setFileName] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
-  const [uploadError, setUploadError] = useState<string | null>(null);
-  const [insightsOpen, setInsightsOpen] = useState(false);
+// ---------------------------------------------------------------------------
+// Home — root page component and application entry point
+// ---------------------------------------------------------------------------
 
+export default function Home() {
+  // --- UI state ---
+  const [fileName, setFileName] = useState<string | null>(null);     // name of the last selected file
+  const [uploading, setUploading] = useState(false);                 // true while POST /api/upload is running
+  const [uploadSuccess, setUploadSuccess] = useState<string | null>(null); // success banner text
+  const [uploadError, setUploadError] = useState<string | null>(null);     // error banner text
+  const [insightsOpen, setInsightsOpen] = useState(false);           // controls InsightsModal visibility
+
+  // --- Primary data fetch: transactions ---
+  // SWR fetches /api/transactions on mount and caches the result.
+  // `mutate` is called after a successful upload to refresh the table immediately.
   const { data, error, isLoading, mutate } = useSWR(
     `${API_BASE_URL}/api/transactions`,
     fetcher,
     {
-      revalidateOnFocus: false,
+      revalidateOnFocus: false, // don't refetch just because the tab regained focus
       onErrorRetry: (error, key, config, revalidate, { retryCount }) => {
+        // Stop retrying on 404 — the endpoint simply has no data yet
         if (retryCount < 2 && error.response?.status === 404) {
           return;
         }
@@ -364,6 +435,9 @@ export default function Home() {
     }
   );
 
+  // --- Lazy insights fetch ---
+  // The SWR key is null when the modal is closed, so no network request is made
+  // until the user opens the modal. Once open, it fetches /api/insights once.
   const { data: insightsData, isLoading: insightsLoading } = useSWR<InsightsData>(
     insightsOpen ? `${API_BASE_URL}/api/insights` : null,
     fetcher
@@ -371,8 +445,12 @@ export default function Home() {
 
   const displayData = data;
 
+  // True when the API has returned no data or an error — triggers the warning banner
   const apiUnavailable = !data || !!error;
 
+  // --- Safe payload object ---
+  // Normalises the raw API response with ?? fallbacks so downstream JSX never
+  // reads `undefined` and throws. All chart/table data is sourced from here.
   const payload = {
     summary: {
       totalSpend: displayData?.summary?.totalSpend ?? 0,
@@ -385,11 +463,26 @@ export default function Home() {
     source: displayData?.source ?? undefined,
   } as ExpenseResponse;
 
+  /**
+   * Computes the percentage of transactions that were flagged as anomalous.
+   * Memoised so it only recalculates when payload changes, not on every render.
+   */
   const flaggedRate = useMemo(() => {
     if (!payload.transactions.length) return "0%";
     return `${Math.round((payload.summary.flaggedCount / payload.transactions.length) * 100)}%`;
   }, [payload]);
 
+  /**
+   * handleUpload — triggered when the user selects a file via FileUploadCard.
+   *
+   * Steps:
+   *  1. Sets uploading state to true (swaps FileUploadCard for UploadProgressOverlay)
+   *  2. Wraps the file in FormData under the key "files" (matches multer config)
+   *  3. POSTs to /api/upload as multipart/form-data
+   *  4. On success: shows a success banner and calls mutate() to refresh the table
+   *  5. On failure: extracts the error message from the response and shows an error banner
+   *  6. Banners auto-dismiss after 5 seconds via setTimeout
+   */
   const handleUpload = async (file: File) => {
     setFileName(file.name);
     setUploading(true);
@@ -398,7 +491,7 @@ export default function Home() {
 
     try {
       const formData = new FormData();
-      formData.append("files", file);
+      formData.append("files", file); // field name must match upload.array("files") on the server
 
       const response = await axios.post(`${API_BASE_URL}/api/upload`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
@@ -410,10 +503,11 @@ export default function Home() {
         setUploadSuccess(
           `Successfully uploaded! ${transactionsAdded} transactions processed, ${transactionsSaved} saved to database${anomaliesDetected > 0 ? `, ${anomaliesDetected} anomalies detected` : ""}.`
         );
-        void mutate();
-        setTimeout(() => setUploadSuccess(null), 5000);
+        void mutate(); // re-fetch /api/transactions so the table updates immediately
+        setTimeout(() => setUploadSuccess(null), 5000); // auto-clear after 5s
       }
     } catch (err: any) {
+      // Prefer the structured error from the API body; fall back to the axios message
       const errorMessage =
         err.response?.data?.error ||
         err.response?.data?.message ||
@@ -421,12 +515,24 @@ export default function Home() {
         "Failed to upload file";
       setUploadError(errorMessage);
       console.error("Upload error:", err);
-      setTimeout(() => setUploadError(null), 5000);
+      setTimeout(() => setUploadError(null), 5000); // auto-clear after 5s
     } finally {
-      setUploading(false);
+      setUploading(false); // always reset uploading regardless of outcome
     }
   };
 
+  /**
+   * handleExport — downloads all transactions as a CSV file via the browser's
+   * native download mechanism.
+   *
+   * Steps:
+   *  1. GETs /api/export which returns a CSV stream with Content-Disposition header
+   *  2. Reads the response as a Blob
+   *  3. Creates a temporary object URL and programmatically clicks an <a> tag to trigger download
+   *  4. Revokes the object URL to free memory
+   *
+   * Uses native fetch (not axios) because it needs raw blob handling.
+   */
   const handleExport = async () => {
     try {
       const url = `${API_BASE_URL}/api/export`;
@@ -444,28 +550,29 @@ export default function Home() {
       }
 
       const blob = await resp.blob();
+      // Extract filename from Content-Disposition header, fall back to default
       const filename =
         resp.headers
           .get("content-disposition")
           ?.split("filename=")[1]
           ?.replace(/"/g, "") || "helix_expense_report.csv";
 
+      // Programmatic download: create a temporary anchor, click it, then clean up
       const blobUrl = window.URL.createObjectURL(blob);
-
       const a = document.createElement("a");
       a.href = blobUrl;
       a.download = filename;
       document.body.appendChild(a);
       a.click();
       a.remove();
-
-      window.URL.revokeObjectURL(blobUrl);
+      window.URL.revokeObjectURL(blobUrl); // free the blob URL from memory
     } catch (err) {
       console.error("Export failed:", err);
       alert("Export failed — see console");
     }
   };
 
+  // Flatten insights data with safe fallbacks before passing to InsightsModal
   const insights: InsightItem[] = insightsData?.insights ?? [];
   const recommendations: string[] = insightsData?.recommendations ?? [];
   const trends = insightsData?.trends ?? [];
@@ -473,6 +580,10 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-slate-950 text-white">
       <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
+
+        {/* ----------------------------------------------------------------
+            Nav bar — app title, live/cache status dot, action buttons
+        ---------------------------------------------------------------- */}
         <nav className="flex flex-col gap-4 rounded-3xl border border-white/10 bg-white/5 p-5 backdrop-blur-lg md:flex-row md:items-center md:justify-between">
           <div>
             <p className="text-xs uppercase tracking-[0.3em] text-slate-400">
@@ -481,6 +592,7 @@ export default function Home() {
             <h1 className="text-2xl font-semibold">Expense Insight console</h1>
           </div>
           <div className="flex flex-wrap items-center gap-3">
+            {/* Connection status indicator — green = live DB, yellow = cache/connecting */}
             <div className="flex items-center gap-2 rounded-full border border-white/10 px-3 py-1 text-xs text-slate-300">
               <span
                 className={`h-2 w-2 rounded-full ${
@@ -497,12 +609,14 @@ export default function Home() {
                   ? "Cache snapshot"
                   : "Connecting…"}
             </div>
+            {/* Opens InsightsModal and triggers the lazy /api/insights fetch */}
             <button
               onClick={() => setInsightsOpen(true)}
               className="cursor-pointer rounded-full border border-indigo-500/40 bg-indigo-500/10 px-3 py-1 text-xs font-semibold text-indigo-200 hover:bg-indigo-500/20 transition"
             >
               AI Insights
             </button>
+            {/* Triggers handleExport to download transactions as CSV */}
             <button
               onClick={handleExport}
               className="cursor-pointer rounded-full border border-white/10 px-3 py-1 text-xs text-slate-300 hover:border-indigo-400/60 hover:text-white transition"
@@ -512,25 +626,31 @@ export default function Home() {
           </div>
         </nav>
 
+        {/* API unavailable warning — shown when no data could be loaded */}
         {apiUnavailable ? (
           <p className="mt-4 rounded-2xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
             Unable to reach the API gateway. Showing cached data.
           </p>
         ) : null}
 
+        {/* Upload success banner — auto-clears after 5 seconds */}
         {uploadSuccess ? (
           <div className="mt-4 rounded-2xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
             {uploadSuccess}
           </div>
         ) : null}
 
+        {/* Upload error banner — auto-clears after 5 seconds */}
         {uploadError ? (
           <div className="mt-4 rounded-2xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
             Upload failed: {uploadError}
           </div>
         ) : null}
 
-        {/* Stat Cards */}
+        {/* ----------------------------------------------------------------
+            KPI Stat Cards — 4 summary metrics in a responsive grid
+            Shows SkeletonCard placeholders while data is loading
+        ---------------------------------------------------------------- */}
         <section className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {isLoading ? (
             <>
@@ -565,8 +685,11 @@ export default function Home() {
           )}
         </section>
 
-        {/* Upload / Top Merchants + Line Chart */}
+        {/* ----------------------------------------------------------------
+            Row 2: File upload card (1 col) + Monthly spending line chart (2 cols)
+        ---------------------------------------------------------------- */}
         <section className="mt-6 grid gap-6 lg:grid-cols-3">
+          {/* Upload area — swaps to UploadProgressOverlay while uploading */}
           <div className="rounded-3xl border border-white/10 bg-white/5 overflow-hidden h-full">
             {uploading ? (
               <div className="h-full flex items-center justify-center p-6">
@@ -581,6 +704,7 @@ export default function Home() {
             )}
           </div>
 
+          {/* Monthly spending line chart — plots payload.monthlySpending over time */}
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6 lg:col-span-2">
             <div className="flex items-center justify-between">
               <div>
@@ -630,8 +754,11 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Category Pie + Transactions Table */}
+        {/* ----------------------------------------------------------------
+            Row 3: Category donut chart (1 col) + Transaction table (2 cols)
+        ---------------------------------------------------------------- */}
         <section className="mt-6 grid gap-6 lg:grid-cols-3">
+          {/* Category donut chart + legend list */}
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6 flex flex-col max-h-[32rem]">
             <div className="flex items-center justify-between shrink-0">
               <div>
@@ -644,6 +771,7 @@ export default function Home() {
                 {payload.categories.length} categories
               </span>
             </div>
+            {/* Donut pie chart — innerRadius creates the hole in the centre */}
             <div className="mt-6 h-46 shrink-0">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -654,6 +782,7 @@ export default function Home() {
                     dataKey="value"
                     paddingAngle={4}
                   >
+                    {/* Each slice gets a color from PIE_COLORS, cycling if > 6 categories */}
                     {payload.categories.map((entry, index) => (
                       <Cell
                         key={entry.label}
@@ -675,6 +804,7 @@ export default function Home() {
                 </PieChart>
               </ResponsiveContainer>
             </div>
+            {/* Scrollable legend list below the chart */}
             <ul className="mt-4 space-y-2 overflow-y-auto flex-1 min-h-0">
               {payload.categories.map((category, index) => (
                 <li
@@ -697,6 +827,7 @@ export default function Home() {
             </ul>
           </div>
 
+          {/* Transaction table — lists every transaction with anomaly badge and confidence bar */}
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6 lg:col-span-2">
             <div className="flex items-center justify-between">
               <div>
@@ -736,12 +867,15 @@ export default function Home() {
                           {new Date(transaction.date).toLocaleDateString()}
                         </td>
                         <td className="py-3">
+                          {/* Green pill = normal, rose pill = AI-flagged anomaly */}
                           <AnomalyBadge anomaly={transaction.anomaly} />
+                          {/* Anomaly reason is shown beneath the badge when present */}
                           {transaction.note ? (
                             <p className="text-xs text-slate-400">{transaction.note}</p>
                           ) : null}
                         </td>
                         <td className="py-3">
+                          {/* Progress bar showing AI confidence score (0–100%) */}
                           <div className="flex items-center gap-2">
                             <div className="h-1.5 flex-1 rounded-full bg-white/10">
                               <div
@@ -762,6 +896,7 @@ export default function Home() {
                         </td>
                       </tr>
                     ))}
+                    {/* Empty state row when no transactions have been uploaded yet */}
                     {!payload.transactions.length ? (
                       <tr>
                         <td
@@ -781,6 +916,7 @@ export default function Home() {
 
       </div>
 
+      {/* InsightsModal — rendered at the root level so it overlays the full screen */}
       <InsightsModal
         open={insightsOpen}
         onClose={() => setInsightsOpen(false)}
