@@ -59,7 +59,29 @@ export const uploadFile = async (req, res, next) => {
         });
         console.log(`Categorized ${categories.length} transactions via Gemini (${hallucinations} hallucinated categories corrected to "Other")`);
       } catch (aiError) {
-        console.warn("Gemini batch categorization failed, skipping:", aiError.message);
+        console.warn("Gemini batch categorization failed, using keyword fallback:", aiError.message);
+        // Fallback: assign category based on merchant name keywords
+        allTransactions.forEach((t) => {
+          const m = (t.merchant || t.description || "").toLowerCase();
+          if (/uber|lyft|airline|flight|hotel|airbnb|train|taxi|transit|hertz|avis/.test(m))
+            t.aiCategory = "Travel";
+          else if (/restaurant|cafe|coffee|food|doordash|grubhub|ubereats|lunch|dinner|starbucks|chipotle/.test(m))
+            t.aiCategory = "Meals";
+          else if (/aws|github|slack|notion|zoom|figma|jira|adobe|microsoft|google cloud|stripe|twilio/.test(m))
+            t.aiCategory = "Software";
+          else if (/office|staples|supplies|printer|desk|chair|depot/.test(m))
+            t.aiCategory = "Office";
+          else if (/electric|water|internet|comcast|at&t|verizon|utility|utilities|gas|power/.test(m))
+            t.aiCategory = "Utilities";
+          else if (/research|lab|experiment|r&d|development|prototype/.test(m))
+            t.aiCategory = "R&D";
+          else if (/gym|wellness|yoga|health|fitness|massage|meditation/.test(m))
+            t.aiCategory = "Wellness";
+          else
+            t.aiCategory = "Other";
+          // Lower confidence signals this was a keyword fallback, not AI
+          t.aiConfidence = 0.5;
+        });
       }
     }
 
