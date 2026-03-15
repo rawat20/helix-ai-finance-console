@@ -12,7 +12,7 @@ export const createTransactionsBulk = async (transactions) => {
       merchant: t.merchant,
       category: t.category || null,
       aiCategory: t.aiCategory || null,
-      confidence: t.aiConfidence || null,
+      confidence: t.aiConfidence != null ? Number(t.aiConfidence) : null,
       anomalyFlag: t.anomalyFlag || false,
       reason: t.reason || null,
     })),

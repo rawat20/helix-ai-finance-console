@@ -80,13 +80,15 @@ export const categorizeBatch = async (transactions) => {
     .map((t, i) => `${i}:${t.merchant}/$${t.amount}`)
     .join(", ");
 
-  const prompt = `Categorize these corporate expenses. Return ONLY a valid JSON array.
+  const prompt = `Categorize these corporate expenses. Return ONLY a valid JSON array with exactly these fields per item: index (number), category (string), confidence (number between 0.0 and 1.0).
 Transactions (index:merchant/amount): ${list}
 Categories: Travel, Meals, Software, Office, Utilities, R&D, Operations, Wellness, Other
-[{"index":0,"category":"Travel","confidence":0.9}]`;
+Example format: [{"index":0,"category":"Travel","confidence":0.9},{"index":1,"category":"Meals","confidence":0.85}]`;
 
   const text = await generateWithRetry(prompt);
-  return parseJSON(text);
+  const parsed = parseJSON(text);
+  console.log(`[Gemini categorizeBatch] sample response (first 3):`, JSON.stringify(parsed.slice(0, 3)));
+  return parsed;
 };
 
 /**
