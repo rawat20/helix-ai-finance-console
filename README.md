@@ -190,3 +190,5 @@ GET /api/export
 ## Sample Data
 
 A sample CSV is included at `backend/express/sample-expenses.csv` with 25 realistic corporate transactions (no Category column — demonstrating that AI categorization works without pre-labeled data).
+
+Made by : Aditya Rawat 
