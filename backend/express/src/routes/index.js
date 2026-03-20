@@ -4,6 +4,7 @@ import { insightsValidation } from "../middleware/validation.js";
 import { uploadFile } from "../controllers/uploadController.js";
 import { getTransactionsList } from "../controllers/transactionsController.js";
 import { getInsights } from "../controllers/insightsController.js";
+import { exportCsv } from "../controllers/exportController.js";
 
 const router = express.Router();
 
@@ -32,5 +33,11 @@ router.get(
   insightsValidation,
   getInsights
 );
+
+/**
+ * GET /export
+ * Download all transactions as a CSV file
+ */
+router.get("/export", exportCsv);
 
 export default router;
