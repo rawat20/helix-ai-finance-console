@@ -46,19 +46,17 @@ export const parseCSV = (csvBuffer, filename = "unknown.csv") => {
  * Normalizes a single CSV row to the standard format
  */
 const normalizeRow = (row, index) => {
-  // Find column mappings (case-insensitive)
+  // Build lowercase key map once per row (reused for all column lookups)
+  const lowerRow = Object.keys(row).reduce((acc, key) => {
+    acc[key.toLowerCase()] = row[key];
+    return acc;
+  }, {});
+
   const findColumn = (variations) => {
-    const lowerRow = Object.keys(row).reduce((acc, key) => {
-      acc[key.toLowerCase()] = row[key];
-      return acc;
-    }, {});
-    
     for (const variation of variations) {
-      const key = Object.keys(lowerRow).find(
-        (k) => k.toLowerCase() === variation.toLowerCase()
-      );
-      if (key !== undefined) {
-        return lowerRow[key];
+      const value = lowerRow[variation.toLowerCase()];
+      if (value !== undefined) {
+        return value;
       }
     }
     return null;

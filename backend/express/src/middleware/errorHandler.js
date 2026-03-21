@@ -31,7 +31,7 @@ export const errorHandler = (err, req, res, next) => {
     });
   }
 
-  // Axios errors (from Python service calls)
+  // Axios errors (from service calls)
   if (err.response) {
     return res.status(err.response.status || 500).json({
       success: false,
