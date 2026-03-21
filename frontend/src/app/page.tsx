@@ -15,30 +15,28 @@ import {
   Cell,
 } from "recharts";
 
-// ---------------------------------------------------------------------------
 // TypeScript type definitions — describe the shape of data coming from the API
-// ---------------------------------------------------------------------------
 
-/** summary block returned inside /api/transactions response. */
+// summary block
 type ExpenseSummary = {
   totalSpend: number;
   flaggedCount: number;
   avgTicket: number;
 };
 
-/** A single { label, value } point used by the pie chart (category breakdown). */
+// pie chart (category breakdown)
 type CategoryPoint = {
   label: string;
   value: number;
 };
 
-/** A single { label, value } point used by the line chart (monthly spending). */
+// line chart (monthly spending)
 type MonthlyPoint = {
   label: string;
   value: number;
 };
 
-/** Full shape of one transaction row as returned by the backend. */
+// transaction row data type
 type Transaction = {
   id: string;
   merchant: string;
@@ -50,7 +48,7 @@ type Transaction = {
   note?: string;      // optional reason when anomaly is true
 };
 
-/** Top-level API response envelope from /api/transactions and /api/expenses. */
+// API response from /api/transactions
 type ExpenseResponse = {
   summary: ExpenseSummary;
   categories: CategoryPoint[];
@@ -59,7 +57,7 @@ type ExpenseResponse = {
   source?: string; // "database" | "fallback" — drives the status dot in the nav
 };
 
-/** A single AI-generated insight card returned by /api/insights. */
+// A single AI-generated insight card returned by InsightsData
 type InsightItem = {
   type: string;
   title: string;
@@ -67,27 +65,21 @@ type InsightItem = {
   severity: "info" | "warning"; // controls card border/bg color in InsightsModal
 };
 
-/** Full response from /api/insights — shown inside InsightsModal. */
+//Full response from /api/insights — shown inside InsightsModal
 type InsightsData = {
   insights: InsightItem[];
   recommendations: string[];
   trends: { metric: string; change: string; period: string }[];
 };
 
-/**
- * Backend API base URL.
- */
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000";
+//  Backend API base URL.
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000";
 
-/**
- * SWR data fetcher using axios.
- * Unwraps the nested `data` field that the Express API wraps responses in
- */
+//  SWR data fetcher using axios - Unwraps the nested `data` field that the Express API wraps responses in
 const fetcher = (url: string) =>
   axios.get(url).then((res) => res.data?.data ?? res.data);
 
-/** Fixed color palette cycled for pie chart slices and category legend dots. */
+//Fixed color palette cycled for pie chart slices and category legend dots
 const PIE_COLORS = ["#6366F1", "#F97316", "#34D399", "#F43F5E", "#22D3EE", "#FBBF24"];
 
 const formatCurrency = (value: number, compact = false) =>
@@ -97,9 +89,8 @@ const formatCurrency = (value: number, compact = false) =>
     notation: compact ? "compact" : "standard",
   }).format(value);
 
-/**
- * StatCard — renders a single KPI tiles
- */
+
+//  StatCard — renders a single KPI tiles
 function StatCard({
   label,
   value,
@@ -130,7 +121,7 @@ function FileUploadCard({
   uploading: boolean;
   fileName: string | null;
 }) {
-  /** Fires when the hidden file input changes; extracts the first file and delegates to onUpload. */
+  // Fires when the hidden file input changes; extracts the first file and delegates to onUpload.
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -170,9 +161,7 @@ function FileUploadCard({
   );
 }
 
-/**
- * SkeletonCard — used as a loader
- */
+//  SkeletonCard — used as a loader
 function SkeletonCard() {
   return (
     <div className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-lg shadow-slate-950/20 animate-pulse">
@@ -183,10 +172,8 @@ function SkeletonCard() {
   );
 }
 
-/**
- * SkeletonTable — animated placeholder shown in place of the transactions table
- * while data is loading. Renders 5 fake rows.
- */
+// SkeletonTable — animated placeholder shown in place of the transactions table
+
 function SkeletonTable() {
   return (
     <div className="animate-pulse space-y-3 mt-4">
@@ -203,10 +190,8 @@ function SkeletonTable() {
   );
 }
 
-/**
- * SkeletonChart — animated bar-like placeholder shown while the monthly
- * spending line chart is loading.
- */
+// SkeletonChart — animated bar-like placeholder shown while the monthly - spending line chart is loading.
+
 function SkeletonChart() {
   return (
     <div className="animate-pulse mt-6 h-64 rounded-2xl bg-white/5 flex items-end gap-2 px-4 pb-4">
@@ -221,10 +206,7 @@ function SkeletonChart() {
   );
 }
 
-/**
- * SkeletonInsights — animated placeholder shown inside InsightsModal while
- * the /api/insights request is in-flight. Renders 3 fake insight cards.
- */
+//  SkeletonInsights — animated placeholder shown inside InsightsModal while
 function SkeletonInsights() {
   return (
     <div className="animate-pulse space-y-3 mt-4">
@@ -239,9 +221,7 @@ function SkeletonInsights() {
   );
 }
 
-/**
- * UploadProgressOverlay — spinning indicator shown inside the upload card
- */
+// UploadProgressOverlay — spinning indicator shown inside the upload card
 function UploadProgressOverlay({ fileName }: { fileName: string | null }) {
   return (
     <div className="flex flex-col items-center justify-center gap-3 h-full">
@@ -258,19 +238,11 @@ function UploadProgressOverlay({ fileName }: { fileName: string | null }) {
 }
 
 /**
- * InsightsModal — full-screen overlay that renders the Gemini AI insights
- * fetched from /api/insights.
- *
- * The modal is lazy: the SWR call that fetches insights only fires when
- * insightsOpen becomes true, so no network request is made until the user
- * explicitly clicks "AI Insights".
- *
+ * InsightsModal — full-screen overlay that renders the Gemini AI insights - fetched from /api/insights.
  * Sections rendered:
  *  - Trend pills (MoM/YoY metrics from the AI)
  *  - Insight cards (color-coded by severity: indigo = info, rose = warning)
  *  - Recommendations list (bullet points from the AI)
- *
- * Clicking the backdrop or the × button calls onClose to dismiss.
  */
 function InsightsModal({
   open,
@@ -408,7 +380,6 @@ function AnomalyBadge({ anomaly }: { anomaly: boolean }) {
 
 // ---------------------------------------------------------------------------
 // Home — root page component and application entry point
-// ---------------------------------------------------------------------------
 
 export default function Home() {
   // --- UI state ---
@@ -443,24 +414,21 @@ export default function Home() {
     fetcher
   );
 
-  const displayData = data;
-
   // True when the API has returned no data or an error — triggers the warning banner
   const apiUnavailable = !data || !!error;
 
   // --- Safe payload object ---
-  // Normalises the raw API response with ?? fallbacks so downstream JSX never
-  // reads `undefined` and throws. All chart/table data is sourced from here.
+  // Normalises the raw API response with ?? fallbacks so downstream JSX never receives undefined
   const payload = {
     summary: {
-      totalSpend: displayData?.summary?.totalSpend ?? 0,
-      flaggedCount: displayData?.summary?.flaggedCount ?? 0,
-      avgTicket: displayData?.summary?.avgTicket ?? 0,
+      totalSpend: data?.summary?.totalSpend ?? 0,
+      flaggedCount: data?.summary?.flaggedCount ?? 0,
+      avgTicket: data?.summary?.avgTicket ?? 0,
     },
-    categories: displayData?.categories ?? [],
-    monthlySpending: displayData?.monthlySpending ?? [],
-    transactions: displayData?.transactions ?? [],
-    source: displayData?.source ?? undefined,
+    categories: data?.categories ?? [],
+    monthlySpending: data?.monthlySpending ?? [],
+    transactions: data?.transactions ?? [],
+    source: data?.source ?? undefined,
   } as ExpenseResponse;
 
   /**
