@@ -1,6 +1,6 @@
 # Helix AI Finance Console
 
-An AI-powered corporate expense management console that parses bank statements, categorizes transactions with Google Gemini, detects anomalies, and generates real-time insights — all backed by a PostgreSQL database.
+An AI-powered corporate expense console that parses bank CSV exports, categorizes transactions with **Google Gemini**, detects anomalies, and serves a live dashboard backed by **PostgreSQL** (via Prisma).
 
 ---
 
@@ -14,111 +14,84 @@ An AI-powered corporate expense management console that parses bank statements, 
 
 ---
 
-## Tech Stack
+## Tech stack
 
 | Layer | Technology |
 |---|---|
-| Frontend | Next.js 16, TypeScript, Tailwind CSS, Recharts, SWR |
-| Backend | Node.js, Express.js 5 |
-| Database | PostgreSQL (Supabase) + Prisma ORM |
-| AI | Google Gemini (`gemini-2.5-flash-lite` by default) |
+| Frontend | Next.js, TypeScript, Tailwind CSS, Recharts, SWR |
+| API | Node.js, Express 5 |
+| Database | PostgreSQL + Prisma ORM |
+| AI | Google Gemini (`GEMINI_MODEL`, default e.g. `gemini-2.5-flash-lite`) |
 
 ---
 
 ## Features
 
-- **CSV Upload** — Upload bank export files; transactions are parsed, categorized, and saved instantly
-- **AI Categorization** — Gemini classifies every expense into a normalized category (Travel, Meals, Software, Office, Utilities, R&D, Operations, Wellness, Other) with a confidence score
-- **Anomaly Detection** — Gemini flags suspicious or unusual transactions on upload; rule-based fallback if AI is unavailable
-- **AI Insights** — On-demand insights, recommendations, and month-over-month trends generated from your real expense data
-- **Dashboard** — Monthly spending line chart, category pie chart, transaction table with anomaly badges
-- **CSV Export** — Download all transactions as a formatted CSV report
-- **Graceful Fallbacks** — Rule-based categorization and computed insights work without a Gemini API key
+- **CSV upload** — Parse and normalize rows; optional Gemini batch categorization + anomaly detection; persist with `skipDuplicates`
+- **Dashboard** — Totals, category pie chart, monthly trend, transaction table with anomaly badges
+- **Insights** — `GET /api/insights` builds summaries from DB data and calls Gemini; **computed** fallback if Gemini fails (modal shows insight cards + recommendations; API may still return `trends` for other clients)
+- **Export** — `GET /api/export` downloads up to **1000** rows as CSV (`date`, `merchant`, `category`, `amount`, `anomaly`, `note` — no internal row `id`)
+- **Fallbacks** — Keyword categorization and statistical anomaly rules when Gemini is unavailable
 
 ---
 
-## Project Structure
+## Project structure
 
 ```
 helix-ai-finance-console/
-├── frontend/                        # Next.js app
-│   └── src/
-│       └── app/
-│           └── page.tsx             # Single-page dashboard UI
-├── backend/
-│   └── express/                     # Express API server
-│       ├── prisma/
-│       │   └── schema.prisma        # Transaction model
-│       ├── src/
-│       │   ├── server.js            # Entry point + export route
-│       │   ├── routes/
-│       │   │   └── index.js
-│       │   ├── controllers/
-│       │   │   ├── uploadController.js
-│       │   │   ├── transactionsController.js
-│       │   │   └── insightsController.js
-│       │   ├── services/
-│       │   │   ├── geminiService.js       # Gemini AI integration
-│       │   │   ├── transactionService.js  # Prisma DB queries
-│       │   │   ├── csvParser.js           # CSV normalization
-│       │   │   └── prisma.js              # Prisma client singleton
-│       │   └── middleware/
-│       │       ├── upload.js        # Multer file handling
-│       │       ├── validation.js    # Request validation
-│       │       └── errorHandler.js  # Centralized error handling
-│       ├── sample-expenses.csv      # 25 sample corporate transactions
-│       ├── API.md                   # Full API reference
-│       └── DATABASE.md             # Database setup guide
+├── frontend/
+│   └── src/app/page.tsx          # Dashboard UI
+├── backend/express/
+│   ├── prisma/schema.prisma      # Transaction model → table `transactions`
+│   ├── src/
+│   │   ├── server.js             # Express app, mounts /api
+│   │   ├── routes/index.js       # upload, transactions, insights, export
+│   │   ├── controllers/         # upload, transactions, insights, export
+│   │   ├── services/            # geminiService, transactionService, csvParser, prisma
+│   │   └── middleware/          # upload (multer), validation, errorHandler
+│   ├── sample-expenses.csv
+│   ├── API.md
+│   └── DATABASE.md
 └── README.md
 ```
 
 ---
 
-## Getting Started
+## Getting started
 
 ### Prerequisites
 
 - Node.js 18+
-- A PostgreSQL database — [Supabase](https://supabase.com) free tier works
-- A [Google AI Studio](https://aistudio.google.com) API key (optional — app works without it using fallbacks)
+- PostgreSQL (local or [Supabase](https://supabase.com))
+- Optional: [Google AI Studio](https://aistudio.google.com) API key for Gemini
 
-### 1. Clone the repo
-
-```bash
-git clone <your-repo-url>
-cd helix-ai-finance-console
-```
-
-### 2. Set up the backend
+### 1. Backend
 
 ```bash
 cd backend/express
 npm install
 ```
 
-Create a `.env` file in `backend/express/`:
+Create `backend/express/.env`:
 
 ```env
-DATABASE_URL="postgresql://postgres:[YOUR-PASSWORD]@db.[YOUR-PROJECT].supabase.co:5432/postgres?schema=public&sslmode=require"
-GEMINI_API_KEY="your_gemini_api_key_here"
+DATABASE_URL="postgresql://postgres:[PASSWORD]@db.[PROJECT].supabase.co:5432/postgres?schema=public&sslmode=require"
+GEMINI_API_KEY="your_key"
+GEMINI_MODEL="gemini-2.5-flash-lite"
+PORT=4000
 ```
 
-Push the schema to your database:
+Apply schema and run:
 
 ```bash
-npx prisma generate
-npx prisma db push
-```
-
-Start the backend:
-
-```bash
+npm run db:generate
+npm run db:push
 npm run dev
 ```
 
-The API runs at `http://localhost:4000`.
+API: **http://localhost:4000** — routes: `POST /api/upload`, `GET /api/transactions`, `GET /api/insights`, `GET /api/export`.
 
-### 3. Set up the frontend
+### 2. Frontend
 
 ```bash
 cd frontend
@@ -126,69 +99,65 @@ npm install
 npm run dev
 ```
 
-The app runs at `http://localhost:3000`.
+App: **http://localhost:3000**
 
-> By default the frontend calls `http://localhost:4000`. To use a different API URL, create `frontend/.env.local` with:
-> ```env
-> NEXT_PUBLIC_API_BASE_URL=https://your-api-domain.com
-> ```
+Optional `frontend/.env.local`:
+
+```env
+NEXT_PUBLIC_API_BASE_URL=http://localhost:4000
+```
 
 ---
 
-## API Endpoints
+## API
 
 | Method | Endpoint | Description |
 |---|---|---|
-| `POST` | `/api/upload` | Upload CSV file — parse, categorize, detect anomalies, save to DB |
-| `GET` | `/api/transactions` | Fetch transactions with filters and pagination |
-| `GET` | `/api/insights` | AI-generated insights and recommendations from real data |
-| `GET` | `/api/export` | Download all transactions as a CSV file |
+| `POST` | `/api/upload` | Multipart CSV → parse → Gemini (optional) → DB |
+| `GET` | `/api/transactions` | Filtered list + summary for charts |
+| `GET` | `/api/insights` | Insights from DB + Gemini or computed fallback |
+| `GET` | `/api/export` | CSV download |
 
-See [`backend/express/API.md`](backend/express/API.md) for full request/response documentation.
+Details: [`backend/express/API.md`](backend/express/API.md).
 
 ---
 
-## Environment Variables
+## Environment variables
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
 | `DATABASE_URL` | Yes | — | PostgreSQL connection string |
-| `GEMINI_API_KEY` | No | — | Google Gemini API key for AI features |
-| `GEMINI_MODEL` | No | `gemini-2.5-flash-lite` | Gemini model to use |
-| `PORT` | No | `4000` | API server port |
+| `GEMINI_API_KEY` | No | — | Gemini API key |
+| `GEMINI_MODEL` | No | (see `.env.example` / docs) | Model id |
+| `PORT` | No | `4000` | Express port |
 
 ---
 
-## How It Works
+## How it works (high level)
 
 ```
-CSV Upload
-  → multer receives file in memory
-  → csvParser normalizes rows (handles column name variations)
-  → Gemini categorizeBatch() assigns aiCategory + confidence to all transactions
-  → Gemini detectAnomalies() flags suspicious transactions
-      (fallback: flag transactions > 3x batch average if Gemini unavailable)
-  → createTransactionsBulk() saves everything to PostgreSQL
+POST /api/upload
+  → multer (memory) accepts files
+  → csvParser normalizes CSV rows
+  → geminiService: categorizeBatch + detectAnomalies (with keyword / average fallbacks)
+  → transactionService.createTransactionsBulk → PostgreSQL
 
 GET /api/transactions
-  → Prisma queries DB with optional filters
-  → Returns transactions + category breakdown + monthly spending totals
+  → transactionService → summary + rows for UI
 
-GET /api/insights (lazy — only loads when user opens the panel)
-  → Fetches up to 200 transactions from DB
-  → Builds summary (total spend, category breakdown, monthly trend)
-  → Gemini generateInsights() returns insights, recommendations, trends
-      (fallback: computed insights from DB data if Gemini unavailable)
+GET /api/insights
+  → transactionService (sample + stats) → geminiService.generateInsights or computed fallback
 
 GET /api/export
-  → Fetches up to 1000 transactions from DB
-  → Streams back as text/csv download
+  → transactionService (limit 1000) → CSV response
 ```
 
 ---
 
-## Sample Data
+## Sample data
 
-A sample CSV is included at `backend/express/sample-expenses.csv` with 25 realistic corporate transactions (no Category column — demonstrating that AI categorization works without pre-labeled data).
+`backend/express/sample-expenses.csv` — example corporate rows for testing upload.
 
-Made by : Aditya Rawat 
+---
+
+Made by: Aditya Rawat

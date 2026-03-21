@@ -6,20 +6,24 @@
 http://localhost:4000
 ```
 
+All JSON APIs are mounted under `/api` (see `src/server.js`).
+
 ---
 
 ## Routes
 
 ### POST /api/upload
 
-Upload one or more CSV files for AI processing and storage.
+Upload one or more CSV files for parsing, AI categorization, anomaly detection, and storage.
 
 **Request:**
+
 - Content-Type: `multipart/form-data`
-- Field name: `files` (array, max 5 files, 10MB each)
-- Accepted formats: `.csv`, `.xlsx`, `.xls`, `.json`, `.txt`
+- Field name: `files` (array, max **5** files, **10 MB** each)
+- Accepted formats: `.csv`, `.xlsx`, `.xls`, `.json`, `.txt` (only **CSV** rows are parsed in-app; other types are accepted by multer but not normalized here)
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -28,7 +32,7 @@ Upload one or more CSV files for AI processing and storage.
     "filesProcessed": 1,
     "transactions": [...],
     "transactionsAdded": 25,
-    "transactionsSaved": 25,
+    "transactionsSaved": 23,
     "anomaliesDetected": 2,
     "errors": []
   }
@@ -36,40 +40,44 @@ Upload one or more CSV files for AI processing and storage.
 ```
 
 **Notes:**
-- CSV files are parsed and normalized automatically (handles common column name variations)
-- Gemini AI runs batch categorization on all transactions (`aiCategory`, `aiConfidence`)
-- Gemini AI runs anomaly detection — flags suspicious transactions (`anomalyFlag`, `reason`)
-- If Gemini is unavailable, a rule-based fallback flags transactions exceeding 3x the batch average
-- `skipDuplicates: true` — re-uploading the same file will not create duplicate records
-- `transactionsSaved` may be less than `transactionsAdded` if duplicates were skipped
 
-**Error responses:**
+- CSV rows are parsed and normalized in `csvParser.js` (common column name variations).
+- **Google Gemini** (`geminiService.categorizeBatch`) assigns `aiCategory` and confidence to each row; invalid AI labels are corrected to `"Other"`.
+- **Gemini anomaly detection** (`geminiService.detectAnomalies`) sets `anomalyFlag` and `reason`; if Gemini fails, transactions **> 3× batch average** are flagged.
+- `createTransactionsBulk` uses **`skipDuplicates: true`** — re-uploading overlapping rows may not increase `transactionsSaved`.
+- `transactionsSaved` is the Prisma `createMany` **count** (can be less than `transactionsAdded` when duplicates are skipped).
+
+**Middleware:** `upload.array("files", 5)` from `middleware/upload.js` (no separate `uploadValidation` on this route).
+
+**Error responses (examples):**
+
 ```json
-{ "success": false, "error": "No file provided" }
-{ "success": false, "error": "File too large", "message": "Maximum file size is 10MB" }
-{ "success": false, "error": "Too many files", "message": "Maximum 5 files allowed per upload" }
+{ "success": false, "error": "No file provided", "message": "Please upload a file (CSV, Excel, or JSON)" }
 ```
+
+Multer may respond with `400` for invalid file type, file too large, or too many files (see `middleware/upload.js` / multer error handler).
 
 ---
 
 ### GET /api/transactions
 
-Fetch transactions from the database with optional filters and pagination.
+Fetch transactions from PostgreSQL with optional filters and pagination.
 
-**Query Parameters:**
+**Query parameters:**
 
 | Parameter | Type | Description |
 |---|---|---|
-| `startDate` | ISO 8601 date | Filter transactions from this date |
-| `endDate` | ISO 8601 date | Filter transactions up to this date |
-| `merchant` | string | Case-insensitive partial match on merchant name |
-| `category` | string | Exact match on original CSV category |
-| `aiCategory` | string | Exact match on AI-assigned category |
-| `anomalyFlag` | `"true"` or `"false"` | Filter flagged/normal transactions |
-| `limit` | number | Max results to return (default: `100`) |
-| `skip` | number | Records to skip for pagination (default: `0`) |
+| `startDate` | ISO 8601 date | From this date (inclusive) |
+| `endDate` | ISO 8601 date | Up to this date (inclusive) |
+| `merchant` | string | Case-insensitive **partial** match |
+| `category` | string | Exact match on CSV `category` |
+| `aiCategory` | string | Exact match on AI category |
+| `anomalyFlag` | `"true"` or `"false"` | Filter flagged / normal |
+| `limit` | number | Max rows (default **100**) |
+| `skip` | number | Offset for pagination (default **0**) |
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -80,19 +88,17 @@ Fetch transactions from the database with optional filters and pagination.
       "avgTicket": 593.74
     },
     "categories": [
-      { "label": "Software", "value": 6761.87 },
-      { "label": "Travel", "value": 2269.56 }
+      { "label": "Software", "value": 6761.87 }
     ],
     "monthlySpending": [
-      { "label": "Nov 2024", "value": 1500.55 },
-      { "label": "Dec 2024", "value": 13322.90 }
+      { "label": "Dec 2024", "value": 13322.9 }
     ],
     "transactions": [
       {
         "id": "uuid",
         "merchant": "AWS",
         "category": "Software",
-        "amount": 340.60,
+        "amount": 340.6,
         "date": "2024-12-07",
         "anomaly": false,
         "confidence": 0.95,
@@ -105,21 +111,26 @@ Fetch transactions from the database with optional filters and pagination.
 }
 ```
 
+**Controller:** `transactionsController.js` · **Service:** `transactionService.js`
+
 ---
 
 ### GET /api/insights
 
-Get AI-generated insights, recommendations, and trends from real transaction data.
+Returns AI-generated insights, recommendations, and trends from **real** DB data (up to **200** transactions for the filtered query).
 
-**Query Parameters:**
+**Query parameters:**
 
 | Parameter | Type | Description |
 |---|---|---|
-| `startDate` | ISO 8601 date | Filter data from this date |
-| `endDate` | ISO 8601 date | Filter data up to this date |
-| `category` | string | Filter by category (max 100 chars) |
+| `startDate` | optional ISO date | Filter from |
+| `endDate` | optional ISO date | Filter to |
+| `category` | optional string | Max **100** characters |
 
-**Response:**
+**Validation:** `insightsValidation` in `middleware/validation.js`.
+
+**Response (when data exists and Gemini succeeds):**
+
 ```json
 {
   "success": true,
@@ -127,21 +138,14 @@ Get AI-generated insights, recommendations, and trends from real transaction dat
     "insights": [
       {
         "type": "spending_pattern",
-        "title": "Spending increased 12% this month",
-        "description": "Cloud and software costs drove a notable spike in December.",
+        "title": "…",
+        "description": "…",
         "severity": "info"
       }
     ],
-    "recommendations": [
-      "Review flagged transactions for potential fraud",
-      "Set monthly budget limits per category"
-    ],
+    "recommendations": ["…"],
     "trends": [
-      {
-        "metric": "Dec 2024",
-        "change": "+12%",
-        "period": "MoM"
-      }
+      { "metric": "Dec 2024", "change": "+12%", "period": "MoM" }
     ],
     "period": {
       "startDate": null,
@@ -154,37 +158,42 @@ Get AI-generated insights, recommendations, and trends from real transaction dat
 ```
 
 **Notes:**
-- `source` is `"gemini"` when AI generates the response, `"computed"` when falling back to rule-based insights
-- Returns an empty state with an upload hint if no transactions exist in the database
-- Insight `severity` values: `"info"`, `"warning"`, `"error"`
-- Insight `type` values: `"spending_pattern"`, `"category_alert"`, `"anomaly"`, `"trend"`
 
-**Validation:**
-- `startDate` / `endDate`: Optional, must be ISO 8601 format
-- `category`: Optional, max 100 characters
+- **`trends`**: From Gemini as `{ metric, change, period }` (see `generateInsights` in `geminiService.js`). If Gemini fails, the **computed** fallback builds a simple trend list from the last two months only.
+- **Helix web UI:** The bundled dashboard **does not render** `trends` in the insights modal (only insight cards and recommendations). The field remains in the JSON for other API consumers.
+- **`source`**: `"gemini"` when `generateInsights` succeeds; **`"computed"`** when Gemini fails and the server builds insights from aggregates (still real DB data).
+- If **no transactions** in range: `insights: []`, a single upload hint in `recommendations`, `trends: []`.
+- Insight `severity`: `"info"`, `"warning"`, `"error"` (where applicable).
+
+**Controller:** `insightsController.js` · **Services:** `transactionService.js`, `geminiService.js`
 
 ---
 
 ### GET /api/export
 
-Download all transactions as a CSV file.
+Download stored transactions as a CSV file.
 
 **Response:**
-- Content-Type: `text/csv`
-- Content-Disposition: `attachment; filename="helix_expense_report.csv"`
 
-**CSV columns:** `id`, `date`, `merchant`, `category`, `amount`, `anomaly`, `note`
+- `Content-Type: text/csv`
+- `Content-Disposition: attachment; filename="helix_expense_report.csv"`
 
-**Notes:**
-- Returns up to 1000 transactions
-- `category` uses `aiCategory` as fallback if original category is null
-- Returns 404 JSON if no transactions exist
+**CSV columns:** `date`, `merchant`, `category`, `amount`, `anomaly`, `note` (internal DB **`id`** is **not** included in the file).
+
+- `category` uses `aiCategory` when `category` is null.
+- `note` maps from DB `reason`.
+
+**Limits:** Up to **1000** rows (`getTransactions({ limit: 1000 })`).
+
+**Empty DB:** `404` JSON: `{ "success": false, "error": "No exportable data available" }`
+
+**Controller:** `exportController.js`
 
 ---
 
-## Error Handling
+## Error handling
 
-All routes return consistent error responses:
+Centralized in `middleware/errorHandler.js`. Typical shape:
 
 ```json
 {
@@ -194,46 +203,38 @@ All routes return consistent error responses:
 }
 ```
 
-**Status Codes:**
-
 | Code | Meaning |
 |---|---|
 | `200` | Success |
-| `400` | Bad request (validation error, invalid file type/size) |
-| `404` | Route not found or no data available |
-| `500` | Internal server error |
+| `400` | Bad request / validation |
+| `404` | Not found or no data (e.g. export) |
+| `500` | Server error |
 
-In development (`NODE_ENV=development`), error responses also include a `stack` field with the full stack trace.
+In development, responses may include a `stack` field.
 
 ---
 
-## Architecture
+## Architecture (Express)
 
 ```
-src/
-├── server.js           # Express app entry point, export route
+backend/express/src/
+├── server.js                 # App entry: CORS, JSON, /api routes, error handlers
 ├── routes/
-│   └── index.js        # Route definitions
+│   └── index.js              # POST /upload, GET /transactions, /insights, /export
 ├── controllers/
 │   ├── uploadController.js
 │   ├── transactionsController.js
-│   └── insightsController.js
+│   ├── insightsController.js
+│   └── exportController.js
 ├── services/
-│   ├── geminiService.js       # Google Gemini AI integration
-│   ├── transactionService.js  # Prisma DB queries
-│   ├── csvParser.js           # CSV parsing and normalization
-│   └── prisma.js              # Prisma client singleton
+│   ├── geminiService.js      # Gemini: batch categorize, anomalies, insights
+│   ├── transactionService.js # Prisma: bulk insert, queries, stats
+│   ├── csvParser.js          # CSV normalization
+│   └── prisma.js             # PrismaClient singleton
 └── middleware/
-    ├── upload.js        # Multer file upload config
-    ├── validation.js    # express-validator rules
-    └── errorHandler.js  # Centralized error handling
+    ├── upload.js             # Multer (memory, limits, file types)
+    ├── validation.js         # express-validator (insights query)
+    └── errorHandler.js
 ```
 
-**AI Provider:** Google Gemini (configured via `GEMINI_API_KEY` and `GEMINI_MODEL` env vars)
-
-**Features:**
-- Input validation with `express-validator`
-- File upload handling with `multer` (memory storage, no disk writes)
-- Centralized error handling with typed error responses
-- Graceful fallbacks when Gemini is unavailable
-- Batch AI processing (single Gemini call per upload, not per transaction)
+**AI:** Google Gemini — see `GEMINI_API_KEY` and `GEMINI_MODEL` in `.env` (see `DATABASE.md`).

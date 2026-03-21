@@ -12,7 +12,7 @@ export const exportCsv = async (req, res, next) => {
       return res.status(404).json({ success: false, error: "No exportable data available" });
     }
 
-    const header = ["id", "date", "merchant", "category", "amount", "anomaly", "note"];
+    const header = ["date", "merchant", "category", "amount", "anomaly", "note"];
     const lines = transactions.map((t) => {
       const date = t.date ? new Date(t.date).toISOString().split("T")[0] : "";
       const merchant = (t.merchant || "").replace(/"/g, '""');
@@ -20,7 +20,7 @@ export const exportCsv = async (req, res, next) => {
       const amount = Number(t.amount || 0).toFixed(2);
       const anomaly = t.anomalyFlag ? "true" : "false";
       const note = (t.reason || "").replace(/"/g, '""');
-      return `"${t.id}","${date}","${merchant}","${category}","${amount}","${anomaly}","${note}"`;
+      return `"${date}","${merchant}","${category}","${amount}","${anomaly}","${note}"`;
     });
 
     const csv = `${header.join(",")}\n${lines.join("\n")}`;

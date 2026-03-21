@@ -1,26 +1,35 @@
 Date,Amount,Description,Merchant
-2024-12-10,52.40,Grocery run,Whole Foods
-2024-12-10,14.99,Music streaming subscription,Spotify
-2024-12-09,289.00,Monthly phone bill,Verizon
-2024-12-09,120.75,Dinner with friends,Sakura Bistro
-2024-12-08,2100.00,Office rent,WeWork
-2024-12-08,75.15,Taxi to airport,Uber
-2024-12-07,340.60,Cloud compute instance,AWS
-2024-12-07,29.99,Notebook and pens,Office Depot
-2024-12-06,980.00,Flight to San Diego,BlueBird Air
-2024-12-06,12.49,Face wash and shampoo,CVS
-2024-12-05,450.00,Freelancer payment,Upwork
-2024-12-05,65.30,Gym supplements,Pulse Fitness
-2024-12-04,482.23,Grocery shopping,Midtown Grocer
-2024-12-03,1289.56,Flight booking,BlueBird Air
-2024-12-02,6421.87,Cloud service subscription,Nimbus Cloud AI
+2024-07-08,189.00,Team lunch,Quiet Garden Cafe
+2024-07-12,425.50,Quarterly software license,Notion Labs
+2024-07-18,78.25,Office supplies,Staples
+2024-07-22,2100.00,Office rent,WeWork
+2024-07-29,156.40,Client dinner,Sakura Bistro
+2024-08-05,92.00,Airport shuttle,Uber
+2024-08-14,245.99,Standing desk accessory,Fully
+2024-08-21,34.50,Coffee runs,Golden Bean Cafe
+2024-08-28,180.00,Coworking day pass,Urban Cowork
+2024-09-03,6421.87,Annual cloud commitment,Nimbus Cloud AI
+2024-09-09,980.00,Flight to conference,BlueBird Air
+2024-09-11,340.60,Cloud compute spike,AWS
+2024-09-17,289.00,Phone bill,Verizon
+2024-09-24,450.00,Contractor invoice,Upwork
+2024-10-02,1289.56,International flight,BlueBird Air
+2024-10-08,305.00,Tech summit ticket,Global Tech Summit
+2024-10-15,199.99,Noise-cancelling headset,Sony Electronics
+2024-10-22,250.00,Team dinner,Olive Garden
+2024-10-30,520.00,Hotel two nights,Marriott
+2024-11-04,119.00,Training course,Coursera
+2024-11-12,89.99,Gym membership,Pulse Fitness
+2024-11-19,35.89,Household supplies,Target
+2024-11-26,320.00,Monthly workspace,Urban Cowork
+2024-11-28,64.20,Ride share,Lyft
 2024-12-01,45.50,Coffee and lunch,Golden Bean Cafe
-2024-11-30,320.00,Monthly workspace,Urban Cowork
-2024-11-29,89.99,Gym membership,Pulse Fitness
-2024-11-28,35.89,Household cleaning supplies,Target
-2024-11-27,119.00,Online course subscription,Coursera
-2024-11-27,8.49,Snacks and water,7-Eleven
-2024-11-26,250.00,Team dinner,Olive Garden
-2024-11-26,199.99,Wireless headphones,Sony Electronics
-2024-11-25,305.00,Conference ticket,Global Tech Summit
-2024-11-25,64.20,Taxi back home,Lyft
+2024-12-03,1289.56,Flight booking,BlueBird Air
+2024-12-04,482.23,Grocery shopping,Midtown Grocer
+2024-12-05,65.30,Gym supplements,Pulse Fitness
+2024-12-06,980.00,Flight to San Diego,BlueBird Air
+2024-12-07,340.60,Cloud compute instance,AWS
+2024-12-08,2100.00,Office rent,WeWork
+2024-12-09,120.75,Dinner with friends,Sakura Bistro
+2024-12-10,52.40,Grocery run,Whole Foods
+2024-12-10,14.99,Music streaming,Spotify

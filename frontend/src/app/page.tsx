@@ -65,11 +65,11 @@ type InsightItem = {
   severity: "info" | "warning"; // controls card border/bg color in InsightsModal
 };
 
-//Full response from /api/insights — shown inside InsightsModal
+// Full response from /api/insights — modal uses insights + recommendations only (trends ignored in UI)
 type InsightsData = {
   insights: InsightItem[];
   recommendations: string[];
-  trends: { metric: string; change: string; period: string }[];
+  trends?: { metric: string; change: string; period: string }[];
 };
 
 //  Backend API base URL.
@@ -240,7 +240,6 @@ function UploadProgressOverlay({ fileName }: { fileName: string | null }) {
 /**
  * InsightsModal — full-screen overlay that renders the Gemini AI insights - fetched from /api/insights.
  * Sections rendered:
- *  - Trend pills (MoM/YoY metrics from the AI)
  *  - Insight cards (color-coded by severity: indigo = info, rose = warning)
  *  - Recommendations list (bullet points from the AI)
  */
@@ -250,14 +249,12 @@ function InsightsModal({
   insightsLoading,
   insights,
   recommendations,
-  trends,
 }: {
   open: boolean;
   onClose: () => void;
   insightsLoading: boolean;
   insights: InsightItem[];
   recommendations: string[];
-  trends: { metric: string; change: string; period: string }[];
 }) {
   // Return nothing when modal is closed to keep it out of the DOM entirely
   if (!open) return null;
@@ -286,26 +283,6 @@ function InsightsModal({
             </svg>
           </button>
         </div>
-
-        {/* Trend pills — green for negative change (spend down), rose for positive (spend up) */}
-        {trends.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-5">
-            {trends.map((t) => (
-              <span
-                key={t.metric}
-                className={`rounded-full border px-3 py-1 text-xs font-semibold ${
-                  t.change.startsWith("+")
-                    ? "border-rose-500/30 bg-rose-500/10 text-rose-300"
-                    : t.change.startsWith("-")
-                      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
-                      : "border-white/10 bg-white/5 text-slate-300"
-                }`}
-              >
-                {t.metric} · {t.change}
-              </span>
-            ))}
-          </div>
-        )}
 
         {/* Insight cards — show skeleton while loading, empty state if no data */}
         {insightsLoading ? (
@@ -411,7 +388,10 @@ export default function Home() {
   // until the user opens the modal. Once open, it fetches /api/insights once.
   const { data: insightsData, isLoading: insightsLoading } = useSWR<InsightsData>(
     insightsOpen ? `${API_BASE_URL}/api/insights` : null,
-    fetcher
+    fetcher,
+    {
+      revalidateOnFocus: false, // avoid extra /api/insights calls when tab regains focus while modal is open
+    }
   );
 
   // True when the API has returned no data or an error — triggers the warning banner
@@ -543,7 +523,6 @@ export default function Home() {
   // Flatten insights data with safe fallbacks before passing to InsightsModal
   const insights: InsightItem[] = insightsData?.insights ?? [];
   const recommendations: string[] = insightsData?.recommendations ?? [];
-  const trends = insightsData?.trends ?? [];
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
@@ -891,7 +870,6 @@ export default function Home() {
         insightsLoading={insightsLoading}
         insights={insights}
         recommendations={recommendations}
-        trends={trends}
       />
     </div>
   );
