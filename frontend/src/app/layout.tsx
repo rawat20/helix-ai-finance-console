@@ -1,3 +1,6 @@
+/**
+ * Root layout: fonts, global CSS, and HTML shell for every page in the app.
+ */
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";

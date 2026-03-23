@@ -12,6 +12,9 @@ import { FileUploadCard } from "./FileUploadCard";
 import { UploadProgressOverlay } from "./UploadProgressOverlay";
 import { SkeletonChart } from "./skeletons";
 
+/**
+ * upload card (or progress overlay while uploading) + monthly spending line chart.
+ */
 export function UploadAndMonthlyChart({
   isLoading,
   payload,

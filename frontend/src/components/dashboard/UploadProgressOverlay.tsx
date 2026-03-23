@@ -1,3 +1,4 @@
+/** Shown in place of the upload card while the backend is processing an uploaded file. */
 export function UploadProgressOverlay({ fileName }: { fileName: string | null }) {
   return (
     <div className="flex flex-col items-center justify-center gap-3 h-full">

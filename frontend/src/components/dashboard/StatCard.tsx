@@ -1,3 +1,4 @@
+/** Single KPI tile: label, large value, optional helper line. */
 export function StatCard({
   label,
   value,

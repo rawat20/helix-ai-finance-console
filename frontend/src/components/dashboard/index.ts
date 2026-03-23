@@ -1,3 +1,4 @@
+/** Barrel: re-exports dashboard UI so consumers can `import { … } from "@/components/dashboard"`. */
 export { AnomalyBadge } from "./AnomalyBadge";
 export { CategoryDonutAndTable } from "./CategoryDonutAndTable";
 export { DashboardBanners } from "./DashboardBanners";

@@ -1,3 +1,4 @@
+/** Pulsing placeholder for one KPI card while `/api/transactions` is loading. */
 export function SkeletonCard() {
   return (
     <div className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-lg shadow-slate-950/20 animate-pulse">
@@ -8,6 +9,7 @@ export function SkeletonCard() {
   );
 }
 
+/** Pulsing placeholder rows for the transactions table. */
 export function SkeletonTable() {
   return (
     <div className="animate-pulse space-y-3 mt-4">
@@ -24,6 +26,7 @@ export function SkeletonTable() {
   );
 }
 
+/** Pulsing bar placeholder for the monthly line chart area. */
 export function SkeletonChart() {
   return (
     <div className="animate-pulse mt-6 h-64 rounded-2xl bg-white/5 flex items-end gap-2 px-4 pb-4">
@@ -38,6 +41,7 @@ export function SkeletonChart() {
   );
 }
 
+/** Pulsing cards while `/api/insights` is loading inside the modal. */
 export function SkeletonInsights() {
   return (
     <div className="animate-pulse space-y-3 mt-4">

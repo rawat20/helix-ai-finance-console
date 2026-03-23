@@ -4,6 +4,12 @@ import axios from "axios";
 import { API_BASE_URL, fetcher } from "@/lib/api";
 import type { ExpenseResponse, InsightItem, InsightsData } from "@/types/expense";
 
+/**
+ * Central hook for the expense dashboard: SWR data for transactions and (when open) AI insights,
+ * upload/export handlers, and derived UI values (payload, flagged %).
+ *
+ * @returns Dashboard state, derived data, and handlers for `page.tsx` and future consumers.
+ */
 export function useExpenseDashboard() {
   const [fileName, setFileName] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -11,11 +17,13 @@ export function useExpenseDashboard() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [insightsOpen, setInsightsOpen] = useState(false);
 
+  /** Primary dataset: summary, categories, monthly series, transactions (GET /api/transactions). */
   const { data, error, isLoading, mutate } = useSWR(
     `${API_BASE_URL}/api/transactions`,
     fetcher,
     {
       revalidateOnFocus: false,
+      /** Skip noisy retries when the API returns 404 (empty DB) early in the retry window. */
       onErrorRetry: (err, _key, _config, _revalidate, { retryCount }) => {
         if (retryCount < 2 && err.response?.status === 404) {
           return;
@@ -24,6 +32,7 @@ export function useExpenseDashboard() {
     }
   );
 
+  /** Fetched only while the insights modal is open to avoid extra Gemini calls on every page load. */
   const { data: insightsData, isLoading: insightsLoading } = useSWR<InsightsData>(
     insightsOpen ? `${API_BASE_URL}/api/insights` : null,
     fetcher,
@@ -32,8 +41,10 @@ export function useExpenseDashboard() {
     }
   );
 
+  /** True when the transactions request failed or returned nothing (banner + “cached” messaging). */
   const apiUnavailable = !data || !!error;
 
+  /** Stable object for charts/tables with safe defaults when `data` is still loading. */
   const payload = useMemo(
     () =>
       ({
@@ -50,6 +61,7 @@ export function useExpenseDashboard() {
     [data]
   );
 
+  /** Human-readable % of transactions marked anomalous (for KPI helper text). */
   const flaggedRate = useMemo(() => {
     if (!payload.transactions.length) return "0%";
     return `${Math.round((payload.summary.flaggedCount / payload.transactions.length) * 100)}%`;
@@ -58,6 +70,7 @@ export function useExpenseDashboard() {
   const insights: InsightItem[] = insightsData?.insights ?? [];
   const recommendations: string[] = insightsData?.recommendations ?? [];
 
+  /** POSTs multipart file to /api/upload, shows success/error toasts, then revalidates transactions. */
   const handleUpload = useCallback(
     async (file: File) => {
       setFileName(file.name);
@@ -103,6 +116,7 @@ export function useExpenseDashboard() {
     [mutate]
   );
 
+  /** GET /api/export and triggers a browser download of the CSV (filename from Content-Disposition). */
   const handleExport = useCallback(async () => {
     try {
       const url = `${API_BASE_URL}/api/export`;

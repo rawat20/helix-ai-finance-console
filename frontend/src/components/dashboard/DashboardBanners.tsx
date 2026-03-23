@@ -1,3 +1,4 @@
+/** Inline alerts for API connectivity, successful upload, or upload errors (non-blocking). */
 export function DashboardBanners({
   apiUnavailable,
   uploadSuccess,

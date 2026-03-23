@@ -1,3 +1,4 @@
+/** Small pill showing whether a transaction was classified as normal vs. anomalous (flagged). */
 export function AnomalyBadge({ anomaly }: { anomaly: boolean }) {
   if (!anomaly) {
     return (

@@ -1,3 +1,6 @@
+/**
+ * Formats a number as USD for KPIs, charts, and tables.
+ */
 export function formatCurrency(value: number, compact = false): string {
   return new Intl.NumberFormat("en-US", {
     style: "currency",

@@ -5,6 +5,9 @@ import { formatCurrency } from "@/lib/format";
 import { AnomalyBadge } from "./AnomalyBadge";
 import { SkeletonTable } from "./skeletons";
 
+/**
+ * Bottom section: category donut chart + legend, and scrollable transactions table with anomaly UI.
+ */
 export function CategoryDonutAndTable({
   isLoading,
   payload,

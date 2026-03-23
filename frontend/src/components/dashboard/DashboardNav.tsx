@@ -2,6 +2,7 @@ import type { ExpenseResponse } from "@/types/expense";
 
 type Source = ExpenseResponse["source"];
 
+/** Top bar: product title, data source indicator (DB vs fallback), AI Insights, Export CSV. */
 export function DashboardNav({
   source,
   onOpenInsights,

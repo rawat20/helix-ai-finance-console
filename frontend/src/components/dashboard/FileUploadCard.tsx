@@ -1,5 +1,6 @@
 import { ChangeEvent } from "react";
 
+/** Hidden file input + drop zone; forwards the chosen file to `onUpload` (hook handles the request). */
 export function FileUploadCard({
   onUpload,
   uploading,
@@ -9,6 +10,7 @@ export function FileUploadCard({
   uploading: boolean;
   fileName: string | null;
 }) {
+  /** Reads the first selected file from the input and triggers the parent upload handler. */
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {

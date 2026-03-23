@@ -3,6 +3,7 @@ import { formatCurrency } from "@/lib/format";
 import { StatCard } from "./StatCard";
 import { SkeletonCard } from "./skeletons";
 
+/** Four headline metrics: total spend, flagged count, avg ticket, transaction count. */
 export function KpiSection({
   isLoading,
   payload,

@@ -1,5 +1,8 @@
 "use client";
 
+/**
+ * Home route: expense dashboard shell. All data fetching and side effects live in
+ */
 import {
   CategoryDonutAndTable,
   DashboardBanners,
@@ -10,6 +13,7 @@ import {
 } from "@/components/dashboard";
 import { useExpenseDashboard } from "@/hooks/useExpenseDashboard";
 
+/** Renders the full-screen expense console: nav, KPIs, upload + chart, category table, insights modal. */
 export default function Home() {
   const {
     fileName,

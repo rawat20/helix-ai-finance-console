@@ -2,7 +2,7 @@ import type { InsightItem } from "@/types/expense";
 import { SkeletonInsights } from "./skeletons";
 
 /**
- * Full-screen overlay: Gemini AI insights and recommendations from /api/insights.
+ * Full-screen overlay: Gemini AI insights and recommendations from `/api/insights`.
  */
 export function InsightsModal({
   open,
