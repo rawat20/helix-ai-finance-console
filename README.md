@@ -40,7 +40,12 @@ An AI-powered corporate expense console that parses bank CSV exports, categorize
 ```
 helix-ai-finance-console/
 ├── frontend/
-│   └── src/app/page.tsx          # Dashboard UI
+│   └── src/
+│       ├── app/page.tsx                    # Route: composes dashboard (client)
+│       ├── components/dashboard/         # UI sections + presentational components
+│       ├── hooks/useExpenseDashboard.ts  # SWR, state, upload/export handlers
+│       ├── lib/                          # api client, format, constants
+│       └── types/expense.ts              # API response types
 ├── backend/express/
 │   ├── prisma/schema.prisma      # Transaction model → table `transactions`
 │   ├── src/
