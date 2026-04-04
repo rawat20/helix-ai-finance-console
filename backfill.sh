@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Replace with the email verified on your GitHub account so contributions count.
-git config user.email "rawat96636@gmail.com"
+git config user.email "rawataditya2000@gmail.com"
 
 for month in 01 02; do
   if [ "$month" = "01" ]; then
