@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Replace with the email verified on your GitHub account so contributions count.
-git config user.email "your@github-email.com"
+git config user.email "rawat96636@gmail.com"
 
 for month in 01 02; do
   if [ "$month" = "01" ]; then
@@ -24,7 +24,7 @@ for month in 01 02; do
 
     for i in $(seq 1 "$num_commits"); do
       echo "[$DATE] session $i" >> activity.log
-      git add activity.log
+      git add -f activity.log
       GIT_AUTHOR_DATE="$DATE" \
       GIT_COMMITTER_DATE="$DATE" \
       git commit -m "chore: update log"
