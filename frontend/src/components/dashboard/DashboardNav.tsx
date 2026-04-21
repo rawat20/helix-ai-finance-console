@@ -1,3 +1,4 @@
+import { UserMenu } from "@/components/auth/UserMenu";
 import type { ExpenseResponse } from "@/types/expense";
 
 type Source = ExpenseResponse["source"];
@@ -18,7 +19,7 @@ export function DashboardNav({
         <p className="text-xs uppercase tracking-[0.3em] text-slate-400">HELIX AI Assistant</p>
         <h1 className="text-2xl font-semibold">Expense Insight console</h1>
       </div>
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex w-full flex-wrap items-center gap-3 md:w-auto md:justify-end">
         <div className="flex items-center gap-2 rounded-full border border-white/10 px-3 py-1 text-xs text-slate-300">
           <span
             className={`h-2 w-2 rounded-full ${
@@ -49,6 +50,7 @@ export function DashboardNav({
         >
           Export CSV
         </button>
+        <UserMenu />
       </div>
     </nav>
   );

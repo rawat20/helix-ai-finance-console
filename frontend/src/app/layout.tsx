@@ -3,6 +3,7 @@
  */
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Providers } from "@/components/auth/Providers";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -16,10 +17,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Telemetry Pulse Dashboard",
+  title: "Helix Finance Console",
   description:
-    "Analytics starter kit powered by Next.js, Tailwind, Recharts, Express, and Python.",
+    "Expense analytics: sign in with Google, explore insights and exports.",
 };
+
+/** Prefer fresh HTML over aggressive caching so post-logout “back” doesn’t revive a stale shell. */
+export const dynamic = "force-dynamic";
 
 export default function RootLayout({
   children,
@@ -31,7 +35,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

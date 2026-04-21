@@ -12,9 +12,19 @@ import {
   UploadAndMonthlyChart,
 } from "@/components/dashboard";
 import { useExpenseDashboard } from "@/hooks/useExpenseDashboard";
+import { useSession } from "next-auth/react";
+import { useEffect } from "react";
 
 /** Renders the full-screen expense console: nav, KPIs, upload + chart, category table, insights modal. */
 export default function Home() {
+  const { status } = useSession();
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      window.location.replace("/login");
+    }
+  }, [status]);
+
   const {
     fileName,
     uploading,
