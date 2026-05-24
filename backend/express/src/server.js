@@ -33,7 +33,7 @@ function getCorsOptions() {
     console.warn(
       "NODE_ENV=production but FRONTEND_URL is unset; browser CORS requests will be rejected."
     );
-    return { origin: false, credentials: false };
+    return { origin: false, credentials: true };
   }
 
   return {
