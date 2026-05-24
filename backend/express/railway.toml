@@ -1,0 +1,5 @@
+[build]
+buildCommand = "npm install && npx prisma generate"
+
+[deploy]
+startCommand = "npx prisma db push && npm start"

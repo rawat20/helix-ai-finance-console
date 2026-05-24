@@ -106,11 +106,50 @@ npm run dev
 
 App: **http://localhost:3000**
 
-Optional `frontend/.env.local`:
+Copy `frontend/.env.example` to `frontend/.env.local` and set NextAuth + Google OAuth values for sign-in.
 
 ```env
 NEXT_PUBLIC_API_BASE_URL=http://localhost:4000
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=...
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
 ```
+
+---
+
+## Deployment (Railway + Vercel)
+
+Full step-by-step guide: **[DEPLOYMENT.md](DEPLOYMENT.md)**.
+
+| Platform | Hosts | Root directory |
+|----------|--------|----------------|
+| **Railway** | Express API + optional Postgres | `backend/express` |
+| **Vercel** | Next.js app + NextAuth (`/api/auth/*`) | `frontend` |
+
+### Railway (backend) env
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DATABASE_URL` | Yes | PostgreSQL connection string |
+| `NODE_ENV` | Yes (prod) | Set to `production` |
+| `FRONTEND_URL` | Yes (prod) | Vercel app URL for CORS, e.g. `https://your-app.vercel.app` |
+| `FRONTEND_URL_PREVIEW` | No | Comma-separated Vercel preview URLs |
+| `GEMINI_API_KEY` | No | Gemini API key |
+| `GEMINI_MODEL` | No | Model id |
+| `PORT` | Auto | Set by Railway |
+
+### Vercel (frontend) env
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `NEXTAUTH_URL` | Yes | Your Vercel URL (must match deployed domain) |
+| `NEXTAUTH_SECRET` | Yes | Random secret (`openssl rand -base64 32`) |
+| `GOOGLE_CLIENT_ID` | Yes | OAuth client id |
+| `GOOGLE_CLIENT_SECRET` | Yes | OAuth client secret |
+| `NEXT_PUBLIC_API_BASE_URL` | Yes (prod) | Railway API origin, no `/api` suffix |
+
+Google OAuth redirect URI for production: `https://<vercel-domain>/api/auth/callback/google`.
 
 ---
 
@@ -118,6 +157,7 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:4000
 
 | Method | Endpoint | Description |
 |---|---|---|
+| `GET` | `/api/health` | Liveness check |
 | `POST` | `/api/upload` | Multipart CSV → parse → Gemini (optional) → DB |
 | `GET` | `/api/transactions` | Filtered list + summary for charts |
 | `GET` | `/api/insights` | Insights from DB + Gemini or computed fallback |
@@ -132,9 +172,12 @@ Details: [`backend/express/API.md`](backend/express/API.md).
 | Variable | Required | Default | Description |
 |---|---|---|---|
 | `DATABASE_URL` | Yes | — | PostgreSQL connection string |
+| `FRONTEND_URL` | Yes (prod) | — | Vercel origin for CORS |
+| `FRONTEND_URL_PREVIEW` | No | — | Comma-separated preview origins |
 | `GEMINI_API_KEY` | No | — | Gemini API key |
 | `GEMINI_MODEL` | No | (see `.env.example` / docs) | Model id |
-| `PORT` | No | `4000` | Express port |
+| `NODE_ENV` | No | — | Set `production` on Railway |
+| `PORT` | No | `4000` | Express port (Railway sets automatically) |
 
 ---
 

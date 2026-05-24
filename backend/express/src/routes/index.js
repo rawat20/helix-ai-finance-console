@@ -9,6 +9,14 @@ import { exportCsv } from "../controllers/exportController.js";
 const router = express.Router();
 
 /**
+ * GET /health
+ * Liveness check for Railway / uptime monitors
+ */
+router.get("/health", (_req, res) => {
+  res.status(200).json({ success: true, status: "ok" });
+});
+
+/**
  * POST /upload
  * Upload expense files for processing
  */
