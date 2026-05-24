@@ -18,13 +18,13 @@ export function UserMenu() {
           className="max-w-[min(100%,14rem)] truncate text-xs text-slate-400 sm:max-w-[16rem]"
           title={data.user.email}
         >
-          {data.user.email}
+          Welcome, {data.user.email}
         </span>
       ) : null}
       <button
         type="button"
         onClick={() => void handleSignOut()}
-        className="shrink-0 rounded-full border border-white/15 px-3 py-1 text-xs text-slate-300 transition hover:border-white/30 hover:text-white"
+        className="shrink-0 rounded-full border border-white/15 px-3 py-1 text-xs text-slate-300 transition hover:border-white/30 hover:text-white cursor-pointer"
       >
         Sign out
       </button>

@@ -1,7 +1,12 @@
 import { LoginPageClient } from "./LoginPageClient";
 import { isOAuthEnvConfigured } from "@/lib/auth-env";
 
-export default function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
   const authConfigured = isOAuthEnvConfigured();
-  return <LoginPageClient authConfigured={authConfigured} />;
+  const { error } = await searchParams;
+  return <LoginPageClient authConfigured={authConfigured} authError={error} />;
 }

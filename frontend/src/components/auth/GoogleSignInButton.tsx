@@ -1,27 +1,25 @@
 "use client";
 
-/**
- * Use a plain `<a>` with full page navigation so NextAuth can 302 to Google.
- * Next.js `<Link>` client-navigation to `/api/auth/*` can break the OAuth redirect.
- */
-export function GoogleSignInButton({ disabled = false }: { disabled?: boolean }) {
-  const callbackUrl = encodeURIComponent("/");
-  const href = `/api/auth/signin/google?callbackUrl=${callbackUrl}`;
+import { signIn } from "next-auth/react";
 
+export function GoogleSignInButton({ disabled = false }: { disabled?: boolean }) {
   return (
-    <a
-      href={disabled ? undefined : href}
-      aria-disabled={disabled}
-      onClick={disabled ? (e) => e.preventDefault() : undefined}
-      className={`flex w-full min-h-[48px] items-center justify-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-sm transition dark:border-slate-600 dark:bg-slate-100 dark:text-slate-900 ${
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={() => {
+        if (disabled) return;
+        void signIn("google", { callbackUrl: "/dashboard" });
+      }}
+      className={`flex w-full min-h-[48px] items-center cursor-pointer justify-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-sm transition dark:border-slate-600 dark:bg-slate-100 dark:text-slate-900 ${
         disabled
-          ? "cursor-not-allowed opacity-50 pointer-events-none"
+          ? "cursor-not-allowed opacity-50"
           : "hover:bg-slate-50 hover:shadow active:scale-[0.99] dark:hover:bg-white"
       }`}
     >
       <GoogleGlyph className="h-5 w-5 shrink-0" aria-hidden />
       <span>Continue with Google</span>
-    </a>
+    </button>
   );
 }
 

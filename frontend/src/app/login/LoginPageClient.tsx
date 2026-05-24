@@ -1,18 +1,25 @@
 "use client";
 
-import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
+import { getAuthErrorMessage } from "@/lib/auth-errors";
 
-export function LoginPageClient({ authConfigured }: { authConfigured: boolean }) {
+export function LoginPageClient({
+  authConfigured,
+  authError,
+}: {
+  authConfigured: boolean;
+  authError?: string;
+}) {
+  const errorMessage = getAuthErrorMessage(authError);
   const { data: session, status } = useSession();
   const router = useRouter();
 
   useEffect(() => {
     if (status === "authenticated") {
-      router.replace("/");
+      router.replace("/dashboard");
     }
   }, [status, router]);
 
@@ -31,6 +38,19 @@ export function LoginPageClient({ authConfigured }: { authConfigured: boolean })
   return (
     <div className="min-h-[100dvh] bg-slate-950 text-slate-100">
       <div className="mx-auto flex min-h-[100dvh] max-w-lg flex-col justify-center px-4 py-8 sm:px-6">
+        {errorMessage ? (
+          <div
+            className="mb-6 rounded-xl border border-red-500/40 bg-red-950/40 p-4 text-sm text-red-100"
+            role="alert"
+          >
+            <p className="font-semibold text-red-50">Sign-in error</p>
+            <p className="mt-2 text-red-100/90">{errorMessage}</p>
+            {authError ? (
+              <p className="mt-2 font-mono text-xs text-red-200/80">code: {authError}</p>
+            ) : null}
+          </div>
+        ) : null}
+
         {!authConfigured ? (
           <div
             className="mb-6 rounded-xl border border-amber-500/40 bg-amber-950/40 p-4 text-sm text-amber-100"
@@ -66,7 +86,7 @@ export function LoginPageClient({ authConfigured }: { authConfigured: boolean })
               Sign in
             </h1>
             <p className="mt-2 text-sm text-slate-400 sm:text-base">
-              Use your Google account to sign in and access the dashboard.
+              Use your Google account to sign in and access the application.
             </p>
           </div>
 
@@ -78,15 +98,7 @@ export function LoginPageClient({ authConfigured }: { authConfigured: boolean })
           </p>
         </div>
 
-        <p className="mt-8 text-center text-sm text-slate-500">
-          <Link
-            href="/"
-            className="text-emerald-400/90 underline-offset-4 hover:text-emerald-300 hover:underline"
-          >
-            Back to dashboard
-          </Link>{" "}
-          <span className="text-slate-600">(requires sign-in if protected)</span>
-        </p>
+        {/*  */}
       </div>
     </div>
   );
