@@ -31,7 +31,7 @@ export function DashboardNav({
             }`}
           />
           {source === "database"
-            ? "Live · Database"
+            ? "Live"
             : source === "fallback"
               ? "Cache snapshot"
               : "Connecting…"}
