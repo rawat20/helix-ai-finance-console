@@ -9,7 +9,7 @@ export const getInsights = async (req, res, next) => {
   try {
     const { startDate, endDate, category } = req.query;
 
-    const filters = {};
+    const filters = { userId: req.userId };
     if (startDate) filters.startDate = startDate;
     if (endDate) filters.endDate = endDate;
     if (category) filters.category = category;

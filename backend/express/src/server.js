@@ -58,6 +58,7 @@ app.listen(PORT, () => {
   }
   console.log(`Available routes:`);
   console.log(`  GET  /api/health`);
+  console.log(`  POST /api/auth/google`);
   console.log(`  POST /api/upload`);
   console.log(`  GET  /api/transactions`);
   console.log(`  GET  /api/insights`);

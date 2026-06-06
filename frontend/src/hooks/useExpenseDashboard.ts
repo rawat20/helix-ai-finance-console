@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import useSWR from "swr";
-import axios from "axios";
-import { API_BASE_URL, fetcher } from "@/lib/api";
+import { useSession } from "next-auth/react";
+import { API_BASE_URL, authFetch, authFetcher } from "@/lib/api";
 import type { ExpenseResponse, InsightItem, InsightsData } from "@/types/expense";
 
 /**
@@ -11,6 +11,10 @@ import type { ExpenseResponse, InsightItem, InsightsData } from "@/types/expense
  * @returns Dashboard state, derived data, and handlers for `page.tsx` and future consumers.
  */
 export function useExpenseDashboard() {
+  const { data: session, status } = useSession();
+  const helixToken = session?.helixToken;
+  const authReady = status === "authenticated" && Boolean(helixToken);
+
   const [fileName, setFileName] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
@@ -19,8 +23,8 @@ export function useExpenseDashboard() {
 
   /** Primary dataset: summary, categories, monthly series, transactions (GET /api/transactions). */
   const { data, error, isLoading, mutate } = useSWR(
-    `${API_BASE_URL}/api/transactions`,
-    fetcher,
+    authReady ? `${API_BASE_URL}/api/transactions` : null,
+    (url) => authFetcher(url, helixToken),
     {
       revalidateOnFocus: false,
       /** Skip noisy retries when the API returns 404 (empty DB) early in the retry window. */
@@ -34,8 +38,8 @@ export function useExpenseDashboard() {
 
   /** Fetched only while the insights modal is open to avoid extra Gemini calls on every page load. */
   const { data: insightsData, isLoading: insightsLoading } = useSWR<InsightsData>(
-    insightsOpen ? `${API_BASE_URL}/api/insights` : null,
-    fetcher,
+    authReady && insightsOpen ? `${API_BASE_URL}/api/insights` : null,
+    (url) => authFetcher(url, helixToken),
     {
       revalidateOnFocus: false,
     }
@@ -82,12 +86,19 @@ export function useExpenseDashboard() {
         const formData = new FormData();
         formData.append("files", file);
 
-        const response = await axios.post(`${API_BASE_URL}/api/upload`, formData, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
+        const response = await authFetch(
+          `${API_BASE_URL}/api/upload`,
+          {
+            method: "POST",
+            body: formData,
+          },
+          helixToken
+        );
 
-        if (response.data.success) {
-          const { transactionsAdded, transactionsSaved, anomaliesDetected } = response.data.data;
+        const responseData = await response.json();
+
+        if (response.ok && responseData.success) {
+          const { transactionsAdded, transactionsSaved, anomaliesDetected } = responseData.data;
           setUploadSuccess(
             `Successfully uploaded! ${transactionsAdded} transactions processed, ${transactionsSaved} saved to database${
               anomaliesDetected > 0 ? `, ${anomaliesDetected} anomalies detected` : ""
@@ -95,17 +106,24 @@ export function useExpenseDashboard() {
           );
           void mutate();
           setTimeout(() => setUploadSuccess(null), 5000);
+        } else {
+          setUploadError(
+            responseData.error || responseData.message || "Failed to upload file"
+          );
+          setTimeout(() => setUploadError(null), 5000);
         }
       } catch (err: unknown) {
-        const axiosErr = err as {
-          response?: { data?: { error?: string; message?: string } };
+        const fetchErr = err as {
+          response?: { status?: number; data?: { error?: string; message?: string } };
           message?: string;
         };
-        const errorMessage =
-          axiosErr.response?.data?.error ||
-          axiosErr.response?.data?.message ||
-          axiosErr.message ||
-          "Failed to upload file";
+        let errorMessage = fetchErr.message || "Failed to upload file";
+        if (fetchErr.response?.data) {
+          errorMessage =
+            fetchErr.response.data.error ||
+            fetchErr.response.data.message ||
+            errorMessage;
+        }
         setUploadError(errorMessage);
         console.error("Upload error:", err);
         setTimeout(() => setUploadError(null), 5000);
@@ -113,17 +131,21 @@ export function useExpenseDashboard() {
         setUploading(false);
       }
     },
-    [mutate]
+    [mutate, helixToken]
   );
 
   /** GET /api/export and triggers a browser download of the CSV (filename from Content-Disposition). */
   const handleExport = useCallback(async () => {
     try {
       const url = `${API_BASE_URL}/api/export`;
-      const resp = await fetch(url, {
-        method: "GET",
-        headers: { Accept: "text/csv" },
-      });
+      const resp = await authFetch(
+        url,
+        {
+          method: "GET",
+          headers: { Accept: "text/csv" },
+        },
+        helixToken
+      );
 
       if (!resp.ok) {
         const text = await resp.text();
@@ -151,7 +173,7 @@ export function useExpenseDashboard() {
       console.error("Export failed:", err);
       alert("Export failed — see console");
     }
-  }, []);
+  }, [helixToken]);
 
   return {
     fileName,

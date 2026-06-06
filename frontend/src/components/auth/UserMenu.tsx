@@ -6,6 +6,7 @@ export function UserMenu() {
   const { data } = useSession();
 
   async function handleSignOut() {
+    localStorage.removeItem("helix_token");
     await signOut({ redirect: false });
     // Full navigation clears React state and reduces bfcache showing a stale dashboard after logout.
     window.location.replace("/login");

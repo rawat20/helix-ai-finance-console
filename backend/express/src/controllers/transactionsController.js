@@ -20,7 +20,7 @@ export const getTransactionsList = async (req, res, next) => {
       skip = "0",
     } = req.query;
 
-    const filters = {};
+    const filters = { userId: req.userId };
     if (startDate) filters.startDate = startDate;
     if (endDate) filters.endDate = endDate;
     if (merchant) filters.merchant = merchant;

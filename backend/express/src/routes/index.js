@@ -1,6 +1,8 @@
 import express from "express";
 import { upload } from "../middleware/upload.js";
+import { requireAuth } from "../middleware/auth.js";
 import { insightsValidation } from "../middleware/validation.js";
+import { googleLogin } from "../controllers/authController.js";
 import { uploadFile } from "../controllers/uploadController.js";
 import { getTransactionsList } from "../controllers/transactionsController.js";
 import { getInsights } from "../controllers/insightsController.js";
@@ -17,11 +19,18 @@ router.get("/health", (_req, res) => {
 });
 
 /**
+ * POST /auth/google
+ * Exchange Google ID token for app JWT
+ */
+router.post("/auth/google", googleLogin);
+
+/**
  * POST /upload
  * Upload expense files for processing
  */
 router.post(
   "/upload",
+  requireAuth,
   upload.array("files", 5),
   uploadFile
 );
@@ -30,7 +39,7 @@ router.post(
  * GET /transactions
  * Get transactions from database with filters
  */
-router.get("/transactions", getTransactionsList);
+router.get("/transactions", requireAuth, getTransactionsList);
 
 /**
  * GET /insights
@@ -38,6 +47,7 @@ router.get("/transactions", getTransactionsList);
  */
 router.get(
   "/insights",
+  requireAuth,
   insightsValidation,
   getInsights
 );
@@ -46,6 +56,6 @@ router.get(
  * GET /export
  * Download all transactions as a CSV file
  */
-router.get("/export", exportCsv);
+router.get("/export", requireAuth, exportCsv);
 
 export default router;

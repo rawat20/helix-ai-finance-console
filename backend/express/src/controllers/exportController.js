@@ -6,7 +6,7 @@ import { getTransactions } from "../services/transactionService.js";
  */
 export const exportCsv = async (req, res, next) => {
   try {
-    const transactions = await getTransactions({ limit: 1000 });
+    const transactions = await getTransactions({ userId: req.userId, limit: 1000 });
 
     if (!transactions || transactions.length === 0) {
       return res.status(404).json({ success: false, error: "No exportable data available" });

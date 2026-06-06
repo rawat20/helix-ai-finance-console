@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
   output   = "../node_modules/.prisma/client"
@@ -11,8 +8,23 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id           String        @id @default(uuid())
+  email        String        @unique
+  googleId     String        @unique
+  name         String?
+  picture      String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  transactions Transaction[]
+
+  @@map("users")
+}
+
 model Transaction {
   id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   date        DateTime @db.Date
   description String?
   amount      Decimal  @db.Decimal(10, 2)
@@ -25,9 +37,9 @@ model Transaction {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  @@index([date])
-  @@index([merchant])
-  @@index([category])
-  @@index([anomalyFlag])
+  @@index([userId])
+  @@index([userId, date])
+  @@index([userId, category])
+  @@index([userId, anomalyFlag])
   @@map("transactions")
 }

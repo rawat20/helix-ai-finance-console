@@ -116,7 +116,11 @@ export const uploadFile = async (req, res, next) => {
     let savedCount = 0;
     if (allTransactions.length > 0) {
       try {
-        const result = await createTransactionsBulk(allTransactions);
+        const stampedRows = allTransactions.map((row) => ({
+          ...row,
+          userId: req.userId,
+        }));
+        const result = await createTransactionsBulk(stampedRows);
         savedCount = result.count;
       } catch (dbError) {
         console.error("Database save error:", dbError.message);

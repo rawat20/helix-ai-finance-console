@@ -6,6 +6,7 @@ import prisma from "./prisma.js";
 export const createTransactionsBulk = async (transactions) => {
   return await prisma.transaction.createMany({
     data: transactions.map((t) => ({
+      userId: t.userId,
       date: new Date(t.date),
       description: t.description || null,
       amount: t.amount,
@@ -25,6 +26,10 @@ export const createTransactionsBulk = async (transactions) => {
  */
 export const getTransactions = async (filters = {}) => {
   const where = {};
+
+  if (filters.userId) {
+    where.userId = filters.userId;
+  }
 
   if (filters.startDate || filters.endDate) {
     where.date = {};
@@ -65,6 +70,10 @@ export const getTransactions = async (filters = {}) => {
  */
 export const getTransactionStats = async (filters = {}) => {
   const where = {};
+
+  if (filters.userId) {
+    where.userId = filters.userId;
+  }
 
   if (filters.startDate || filters.endDate) {
     where.date = {};
